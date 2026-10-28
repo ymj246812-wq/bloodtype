@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수혈 관계 탐구 3D</title>
+<style>
+:root{--A:#14a38b;--B:#8b5cf6;--rbc:#d23245;--ok:#1b8a4b;--bad:#c92a3e;--line:#cfdae3;--bg:#eef3f7;--mute:#5d6f7d;--ink:#14222e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Malgun Gothic',system-ui,sans-serif;line-height:1.5}
+main{max-width:1100px;margin:0 auto;padding:14px}
+h1{font-size:1.3rem;margin:0 0 4px}
+.note{color:var(--mute);font-size:.85rem;margin:0 0 8px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0}
+.row .lbl{min-width:7.5em;font-weight:700;font-size:.92rem}
+button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:inherit}
+button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
+#view{position:relative;width:100%;height:min(68vh,600px);min-height:380px;border-radius:14px;overflow:hidden;
+  background:radial-gradient(120% 90% at 30% 35%,#ffffff 0%,#e9f0f6 55%,#d9e4ee 100%);border:1px solid var(--line);touch-action:none}
+#view canvas{display:block;width:100%;height:100%}
+.tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:.85rem;font-weight:700;pointer-events:none;white-space:nowrap;transition:opacity .4s}
+.badge{display:inline-block;margin-top:2px;padding:1px 8px;border-radius:99px;border:1px dashed #9fb0bf;color:var(--mute);font-size:.75rem;font-weight:400;background:#ffffffcc}
+.badge.own{border:1px solid var(--rbc);color:var(--rbc);font-weight:700}
+.hint{position:absolute;left:12px;top:10px;font-size:.78rem;color:var(--mute);pointer-events:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--mute);margin-top:8px;align-items:center}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+.msg{margin-top:10px;padding:10px 14px;border-radius:10px;background:var(--bg);border-left:6px solid var(--line);font-weight:700;min-height:44px}
+.msg.ok{border-color:var(--ok);color:var(--ok)}.msg.no,.msg.bad{border-color:var(--bad);color:var(--bad)}
+</style>
+</head>
+<body><main>
+<h1>🩸 수혈 관계 탐구 · 3D 실험대</h1>
+<p class="note">3D 시제품이에요. 응집소를 끌어다 적혈구 가장자리의 응집원에 끼워 보세요. 빈 곳을 끌면 적혈구를 돌려 볼 수 있어요. (이 페이지는 저장 기능이 없어요)</p>
+
+<div class="card">
+  <div class="row"><span class="lbl">주는 사람(적혈구)</span><span id="bd"></span></div>
+  <div class="row"><span class="lbl">받는 사람(혈장)</span><span id="br"></span></div>
+</div>
+
+<div id="view">
+  <div id="tags"></div>
+  <div class="hint">응집소 끌기: 맞춰 보기 · 빈 곳 끌기: 돌려 보기</div>
+</div>
+<div class="legend">
+  <span><span class="dot" style="background:var(--A)"></span>응집원 A (삼각뿔 머리)</span>
+  <span><span class="dot" style="background:var(--B)"></span>응집원 B (공 모양 머리)</span>
+  <span><span class="dot" style="background:#5f7f9e"></span>응집소 (끝에 홈이 2개)</span>
+</div>
+<div id="res" class="msg"></div>
+<div class="row" style="margin-top:8px">
+  <button id="againBtn">↺ 다시 하기</button>
+  <button id="viewBtn">시점 초기화</button>
+</div>
+</main>
+
+<script type="module">
+import * as THREE from './lib/three.module.min.js';
+
+/* =====================================================================
+   모양 설정: 숫자를 바꾸면 3D 모형의 크기와 모양이 바뀝니다.
+   ===================================================================== */
+const SIZE = {
+  rbcRadius: 1.6,       // 적혈구 반지름
+  stalk: 0.32,          // 응집원 줄기 길이
+  armLen: 0.7,          // 응집소 팔 길이
+  stemLen: 0.8,         // 응집소 몸통 길이
+  cupH: 0.46,           // 응집소 결합부위(홈 블록) 높이
+  cupR: 0.3             // 결합부위 바깥 반지름
+};
+const COLOR = { A: 0x14a38b, B: 0x8b5cf6, rbc: 0xd23245, ab: 0x5f7f9e, pocket: 0xb9cde0 };
+/* ===================================================================== */
+
+const TY = ['A', 'B', 'AB', 'O'];
+const ANTIGEN = { A: ['A'], B: ['B'], AB: ['A', 'B'], O: [] };
+const ANTIBODY = { A: ['b'], B: ['a'], AB: [], O: ['a', 'b'] };
+const FIT = { a: 'A', b: 'B' }, GREEK = { a: 'α', b: 'β' };
+const fits = (r, d) => ANTIGEN[d].some(g => ANTIBODY[r].some(x => FIT[x] === g));
+const $ = id => document.getElementById(id);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- 3D 기본 ---------- */
+const view = $('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+view.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 200);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xaebfd0, 1.4));
+const key = new THREE.DirectionalLight(0xfff4e8, 2.4); key.position.set(5, 7, 9); scene.add(key);
+const fill = new THREE.DirectionalLight(0xdbe8ff, 0.9); fill.position.set(-7, -3, 5); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 0.8); rim.position.set(0, 4, -8); scene.add(rim);
+
+/* ---------- 모형 만들기 ---------- */
+const R = SIZE.rbcRadius;
+function rbcGeometry() {
+  // 가운데가 오목한 원반 (적혈구 단면 곡선을 회전)
+  const pts = [], N = 48, k = R * 0.9;
+  const h = p => k * Math.sqrt(Math.max(0, 1 - p * p)) * (0.16 + 0.95 * p * p - 0.62 * p ** 4);
+  for (let i = 0; i <= N; i++) { const p = Math.sin(i / N * Math.PI / 2); pts.push(new THREE.Vector2(p * R, h(p))); }
+  for (let i = N - 1; i >= 0; i--) { const p = Math.sin(i / N * Math.PI / 2); pts.push(new THREE.Vector2(p * R, -h(p))); }
+  const g = new THREE.LatheGeometry(pts, 96);
+  g.rotateX(Math.PI / 2);
+  return g;
+}
+const RBC_GEO = rbcGeometry();
+const STALK_GEO = new THREE.CylinderGeometry(0.045, 0.06, SIZE.stalk + 0.08, 16);
+const HEAD_A = new THREE.ConeGeometry(0.22, 0.36, 3); HEAD_A.translate(0, 0.18, 0);        // 삼각뿔, 밑면 중심이 원점
+const HEAD_B = new THREE.SphereGeometry(0.18, 40, 24);                                     // 중심이 원점
+const DOCK_OUT = { A: R + SIZE.stalk, B: R + SIZE.stalk + 0.14 };                          // 중심에서 결합 기준점까지
+
+function makeRBC(donor, interactive) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(RBC_GEO, new THREE.MeshPhysicalMaterial({ color: COLOR.rbc, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.5, sheen: 0.4, sheenColor: new THREE.Color(0xff9aa8) }));
+  g.add(body);
+  g.userData.antigens = [];
+  const list = ANTIGEN[donor];
+  if (list.length) for (let i = 0; i < 6; i++) {
+    const t = list[i % list.length], th = i / 6 * Math.PI * 2 + Math.PI / 6;
+    const u = new THREE.Vector3(Math.cos(th), Math.sin(th), 0);
+    const mat = new THREE.MeshStandardMaterial({ color: COLOR[t], roughness: 0.35, metalness: 0.05 });
+    const hmat = mat.clone(); hmat.flatShading = t === 'A';
+    const a = new THREE.Group();
+    const stalk = new THREE.Mesh(STALK_GEO, mat); stalk.position.y = R - 0.04 + (SIZE.stalk + 0.08) / 2 - 0.04;
+    const head = new THREE.Mesh(t === 'A' ? HEAD_A : HEAD_B, hmat);
+    head.position.y = t === 'A' ? R + SIZE.stalk : DOCK_OUT.B;
+    a.add(stalk, head);
+    a.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), u);
+    g.add(a);
+    g.userData.antigens.push({ t, u, dock: u.clone().multiplyScalar(DOCK_OUT[t]), mats: [mat, hmat], bound: false, obj: a });
+  }
+  return g;
+}
+
+function cupGeometries(x) {
+  // 바깥 블록과 홈(오목) 부분을 따로 만들어 홈 색을 밝게 보이게 합니다.
+  const H = SIZE.cupH, Ro = x === 'a' ? 0.38 : SIZE.cupR, V = (a, b) => new THREE.Vector2(a, b);
+  const pr = x === 'a' ? 0.25 : 0.2, seg = x === 'a' ? 3 : 48;
+  const outer = [V(0, 0), V(Ro - 0.06, 0), V(Ro - 0.01, 0.04), V(Ro, 0.1), V(Ro, H - 0.05), V(Ro - 0.02, H - 0.005), V(pr + 0.02, H), V(pr, H)];
+  const inner = [];
+  if (x === 'a') { const depth = 0.38; for (let i = 0; i <= 8; i++) { const f = i / 8; inner.push(V(pr * (1 - f) + 0.0001, H - depth * f)); } }
+  else { for (let i = 0; i <= 10; i++) { const t = i / 10 * Math.PI / 2; inner.push(V(pr * Math.cos(t) + 0.0001, H - pr * Math.sin(t))); } }
+  return [new THREE.LatheGeometry(outer, seg), new THREE.LatheGeometry(inner, seg)];
+}
+const CUP = { a: cupGeometries('a'), b: cupGeometries('b') };
+const ARM_GEO = new THREE.CylinderGeometry(0.085, 0.085, SIZE.armLen, 20); ARM_GEO.translate(0, SIZE.armLen / 2, 0);
+const STEM_GEO = new THREE.CylinderGeometry(0.1, 0.1, SIZE.stemLen, 20); STEM_GEO.translate(0, SIZE.stemLen / 2, 0);
+const HINGE_GEO = new THREE.SphereGeometry(0.13, 24, 16);
+const ARM0 = THREE.MathUtils.degToRad(35);
+const MOUTH = SIZE.armLen + SIZE.cupH;
+
+function makeAntibody(x) {
+  const g = new THREE.Group();
+  const body = new THREE.MeshStandardMaterial({ color: COLOR.ab, roughness: 0.38, metalness: 0.12 });
+  const pocket = new THREE.MeshStandardMaterial({ color: COLOR.pocket, roughness: 0.55, side: THREE.DoubleSide });
+  const outerMat = body.clone(); outerMat.side = THREE.DoubleSide;
+  if (x === 'a') { outerMat.flatShading = true; pocket.flatShading = true; }
+  g.add(new THREE.Mesh(HINGE_GEO, body));
+  const stem = new THREE.Group(); stem.rotation.z = Math.PI; stem.add(new THREE.Mesh(STEM_GEO, body)); g.add(stem);
+  const arms = [-ARM0, ARM0].map(a => {
+    const p = new THREE.Group(); p.rotation.z = a;
+    p.add(new THREE.Mesh(ARM_GEO, body));
+    const c1 = new THREE.Mesh(CUP[x][0], outerMat), c2 = new THREE.Mesh(CUP[x][1], pocket);
+    c1.position.y = c2.position.y = SIZE.armLen;
+    p.add(c1, c2); g.add(p); return p;
+  });
+  g.userData = { x, arms, stem, mats: [body, pocket, outerMat], state: 'tray' };
+  g.traverse(o => { if (o.isMesh) o.userData.ab = g; });
+  return g;
+}
+function setGhost(ab, ghost) {
+  ab.userData.mats.forEach(m => { m.transparent = ghost; m.opacity = ghost ? 0.28 : 1; m.depthWrite = !ghost; m.needsUpdate = true; });
+}
+// 팔 각도 a 에서 팔 방향(로컬)과 홈 입구 위치
+const armDir = a => new THREE.Vector3(-Math.sin(a), Math.cos(a), 0);
+function mouthLocal(ab, k) { return armDir(ab.userData.arms[k].rotation.z).multiplyScalar(MOUTH); }
+function mouthWorld(ab, k) { ab.updateMatrixWorld(true); return mouthLocal(ab, k).applyMatrix4(ab.matrixWorld); }
+
+/* ---------- 간단한 애니메이션 ---------- */
+const anims = [];
+function animate(dur, step, done) { anims.push({ t0: performance.now(), dur: reduce ? 1 : dur, step, done }); }
+const ease = t => t < .5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+function tweenTo(obj, pos, quat, dur, done) {
+  const p0 = obj.position.clone(), q0 = obj.quaternion.clone();
+  animate(dur, t => { const e = ease(t); obj.position.lerpVectors(p0, pos, e); obj.quaternion.slerpQuaternions(q0, quat, e); }, done);
+}
+
+/* ---------- 화면 배치 ---------- */
+let layout = 'wide';
+const slots = { a: new THREE.Vector3(), b: new THREE.Vector3() }, slotQ = new THREE.Quaternion();
+let camTarget = new THREE.Vector3(), camDist = 12, camGoal = null;
+function fitCamera(cx, cy, halfW, halfH) {
+  const asp = view.clientWidth / view.clientHeight, f = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  return { target: new THREE.Vector3(cx, cy, 0), dist: Math.max(halfH, halfW / asp) / f * 1.12 + 1 };
+}
+function doLayout() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  layout = w / h >= 1.05 ? 'wide' : 'tall';
+  if (layout === 'wide') {
+    slots.a.set(4.4, 1.25, 0); slots.b.set(4.4, -1.45, 0);
+    slotQ.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2)         // 팔이 왼쪽(적혈구 쪽)을 향함
+      .premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.85)); // 홈 입구가 보이게 기울임
+    const c = fitCamera(1.25, 0, 3.9, 2.75); camTarget = c.target; camDist = c.dist;
+  } else {
+    slots.a.set(-1.3, -4.2, 0); slots.b.set(1.3, -4.2, 0);
+    slotQ.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.85);                // 팔이 위(적혈구 쪽), 홈 입구가 보이게 기울임
+    const c = fitCamera(0, -1.2, 2.75, 3.9); camTarget = c.target; camDist = c.dist;
+  }
+  if (L) L.tray.forEach(ab => { if (ab.userData.state === 'tray') { ab.position.copy(slots[ab.userData.x]); ab.quaternion.copy(slotQ); } });
+  if (!L || !L.zoomed) { camera.position.set(camTarget.x, camTarget.y, camDist); camera.lookAt(camTarget); }
+}
+
+/* ---------- 실험 진행 ---------- */
+let sel = { d: 'A', r: 'B' }, L = null, rbc = null;
+const tagsEl = $('tags');
+function res(t, c) { $('res').className = 'msg ' + (c || ''); $('res').textContent = t; }
+function typeButtons(k) { return TY.map(t => `<button data-k="${k}" data-t="${t}" class="${sel[k] === t ? 'sel' : ''}">${t}형</button>`).join(''); }
+
+function clearScene() {
+  if (rbc) scene.remove(rbc);
+  if (L) L.tray.forEach(ab => scene.remove(ab));
+  anims.length = 0;
+}
+function spawnTray(x) {
+  const ab = makeAntibody(x);
+  ab.position.copy(slots[x]); ab.quaternion.copy(slotQ);
+  ab.scale.setScalar(0.01);
+  animate(350, t => ab.scale.setScalar(Math.max(0.01, ease(t))));
+  scene.add(ab);
+  L.tray = L.tray.filter(o => o.userData.x !== x).concat(ab);
+  return ab;
+}
+function setup() {
+  $('bd').innerHTML = typeButtons('d'); $('br').innerHTML = typeButtons('r');
+  clearScene();
+  L = { tray: [], matched: new Set(), done: false, zoomed: false, docked: [] };
+  rbc = makeRBC(sel.d, true);
+  rbc.rotation.set(-0.62, 0.3, 0);
+  scene.add(rbc);
+  doLayout();
+  spawnTray('a'); spawnTray('b');
+  tagsEl.innerHTML = ['a', 'b'].map(x => {
+    const own = ANTIBODY[sel.r].includes(x);
+    return `<div class="tag" id="tag-${x}">응집소 ${GREEK[x]}<br><span class="badge ${own ? 'own' : ''}">${own ? '혈장에 있음' : '혈장에 없음'}</span></div>`;
+  }).join('');
+  if (!rbc.userData.antigens.length) ending();
+  else res(`${sel.d}형 적혈구와 ${sel.r}형 혈장이에요. 응집소의 홈 모양을 잘 보고, 맞는 응집소를 응집원에 끌어다 끼워 보세요.`);
+}
+
+function dockTarget(ab, k, ag) {
+  // 적혈구(로컬) 좌표에서: 팔 k 의 방향이 응집원 안쪽(-u)을 향하고, 홈 입구가 결합 기준점에 오도록
+  const q = new THREE.Quaternion().setFromUnitVectors(armDir(ab.userData.arms[k].rotation.z), ag.u.clone().negate());
+  const p = ag.dock.clone().sub(mouthLocal(ab, k).applyQuaternion(q));
+  return { p, q };
+}
+function dock(ab, k, ag, delay, done) {
+  ag.bound = true; ab.userData.state = 'docked'; ab.userData.dockArm = k; ab.userData.ag = ag;
+  const own = ANTIBODY[sel.r].includes(ab.userData.x);
+  const host = rbc;
+  setTimeout(() => {
+    if (host !== rbc) { scene.remove(ab); return; }
+    rbc.attach(ab);
+    const { p, q } = dockTarget(ab, k, ag);
+    tweenTo(ab, p, q, 650, () => { if (!own) setGhost(ab, true); done && done(); });
+  }, delay);
+  L.docked.push(ab);
+}
+
+function project(v) {
+  const p = v.clone().project(camera);
+  return { x: (p.x + 1) / 2 * view.clientWidth, y: (1 - p.y) / 2 * view.clientHeight };
+}
+function nearestAntigen(ab, px, py) {
+  let best = null, bd = 75;
+  rbc.updateMatrixWorld(true);
+  rbc.userData.antigens.forEach(ag => {
+    if (ag.bound) return;
+    const s = project(ag.dock.clone().applyMatrix4(rbc.matrixWorld));
+    const cands = [[px, py, -1], ...[0, 1].map(k => { const m = project(mouthWorld(ab, k)); return [m.x, m.y, k]; })];
+    cands.forEach(([x, y, k]) => { const d = Math.hypot(x - s.x, y - s.y); if (d < bd) { bd = d; best = { ag, k }; } });
+  });
+  if (best && best.k === -1) {
+    // 손가락 위치로 찾은 경우: 그 응집원에 더 가까운 팔을 고릅니다
+    const s = project(best.ag.dock.clone().applyMatrix4(rbc.matrixWorld));
+    const d = [0, 1].map(k => { const m = project(mouthWorld(ab, k)); return Math.hypot(m.x - s.x, m.y - s.y); });
+    best.k = d[0] <= d[1] ? 0 : 1;
+  }
+  return best;
+}
+
+function shakeBack(ab) {
+  const base = ab.quaternion.clone(), axis = new THREE.Vector3(0, 0, 1);
+  animate(500, t => {
+    const w = Math.sin(t * Math.PI * 6) * (1 - t) * 0.35;
+    ab.quaternion.copy(base).premultiply(new THREE.Quaternion().setFromAxisAngle(axis, w));
+  }, () => tweenTo(ab, slots[ab.userData.x], slotQ, 420, () => { ab.userData.state = 'tray'; }));
+}
+
+function onDrop(ab, px, py) {
+  highlight(null);
+  const hit = nearestAntigen(ab, px, py);
+  if (!hit) { tweenTo(ab, slots[ab.userData.x], slotQ, 380, () => { ab.userData.state = 'tray'; }); return; }
+  if (FIT[ab.userData.x] !== hit.ag.t) {
+    ab.userData.state = 'busy';
+    shakeBack(ab);
+    res(`✕ 응집소 ${GREEK[ab.userData.x]}의 홈에는 이 응집원이 들어가지 않아요. 홈 모양을 다시 살펴보세요!`, 'no');
+    return;
+  }
+  // 맞음: 끌어온 응집소가 결합하고, 같은 응집원에는 같은 응집소가 따라 붙습니다
+  const x = ab.userData.x, g = hit.ag.t;
+  dock(ab, hit.k, hit.ag, 0);
+  let n = 0;
+  rbc.userData.antigens.forEach(ag => {
+    if (ag.bound || ag.t !== g) return;
+    const c = makeAntibody(x); c.userData.state = 'docked';
+    c.position.copy(slots[x]); c.quaternion.copy(slotQ); scene.add(c);
+    dock(c, n % 2, ag, 160 * (++n));
+  });
+  L.matched.add(g);
+  spawnTray(x);
+  const need = new Set(ANTIGEN[sel.d]).size;
+  if (L.matched.size < need) res(`✔ OK! 응집소 ${GREEK[x]}의 홈에 응집원 ${g}가 딱 맞아요. 다른 응집원에 맞는 응집소도 찾아보세요.`, 'ok');
+  else { res(`✔ OK! 응집소 ${GREEK[x]}의 홈에 응집원 ${g}가 딱 맞아요. 어떻게 되는지 지켜보세요…`, 'ok'); const cur = L; setTimeout(() => { if (L === cur) ending(); }, 160 * n + 800); }
+}
+
+function ending() {
+  L.done = true;
+  L.tray.forEach(ab => { ab.userData.state = 'off'; setGhost(ab, true); });
+  document.querySelectorAll('.tag').forEach(t => t.style.opacity = .35);
+  const d = sel.d, r = sel.r;
+  if (!ANTIGEN[d].length) { res('이 적혈구에는 응집원이 없어 응집소가 끼워질 곳이 없어요. 적혈구는 어떻게 될까요?', 'ok'); return; }
+  if (!fits(r, d)) { res('✔ OK! 모양은 맞지만 이 응집소는 받는 사람 혈장에 없어요(흐리게 표시). 적혈구는 어떻게 될까요?', 'ok'); return; }
+  clump();
+}
+
+function clump() {
+  // 혈장에 있는 응집소가 남은 홈으로 다른 적혈구를 붙잡아 엉겨 붙는 모습
+  const cur = L;
+  const bridges = L.docked.filter(ab => ANTIBODY[sel.r].includes(ab.userData.x)).slice(0, 6).filter((_, i) => i % 2 === 0);
+  let far = 0;
+  bridges.forEach((ab, i) => {
+    const k = ab.userData.dockArm, o = 1 - k, ag = ab.userData.ag;
+    const ak = ab.userData.arms[k].rotation.z;
+    const ao = ak + Math.PI, s0 = ab.userData.stem.rotation.z;
+    // 몸통은 두 팔과 수직인 두 방향 중 원래 몸통에 더 가까운 쪽으로 (T자 모양)
+    const gap = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+    const sT = [ak + Math.PI / 2, ak - Math.PI / 2].sort((a, b) => gap(a, s0) - gap(b, s0))[0];
+    const a0 = ab.userData.arms[o].rotation.z;
+    // 경첩이 펴지면서 남은 팔이 바깥을 향합니다 (결합한 팔은 제자리)
+    setTimeout(() => { if (L !== cur) return; animate(600, t => {
+      const e = ease(t);
+      ab.userData.arms[o].rotation.z = a0 + (ao - a0) * e;
+      ab.userData.stem.rotation.z = s0 + (sT - s0) * e;
+    }, () => {
+      // 남은 홈 입구와 방향 (적혈구 로컬)
+      const m = mouthLocal(ab, o).applyQuaternion(ab.quaternion).add(ab.position);
+      const e = ag.u.clone();                                   // 바깥 방향
+      const other = makeRBC(sel.d, false);
+      const idx = other.userData.antigens.findIndex(a => a.t === ag.t);
+      const oa = other.userData.antigens[idx];
+      const q = new THREE.Quaternion().setFromUnitVectors(oa.u, e.clone().negate());
+      q.premultiply(new THREE.Quaternion().setFromAxisAngle(e, Math.floor(Math.random() * 3) * Math.PI * 2 / 3)); // 삼각형 모서리가 맞도록 120° 단위로만
+      const target = m.clone().sub(oa.dock.clone().applyQuaternion(q));
+      other.quaternion.copy(q);
+      other.position.copy(target).addScaledVector(e, 6);
+      rbc.add(other);
+      far = Math.max(far, target.length() + R + 0.7);
+      animate(900, t => { other.position.copy(target).addScaledVector(e, 6 * (1 - ease(t))); });
+    }); }, 200 * i);
+  });
+  // 카메라를 뒤로 빼서 엉긴 모습 전체를 보여 줍니다
+  setTimeout(() => {
+    if (L !== cur) return;
+    L.zoomed = true;
+    rbc.updateMatrixWorld(true);
+    const c = new THREE.Vector3().setFromMatrixPosition(rbc.matrixWorld);
+    const fit = fitCamera(c.x, c.y, Math.max(far * 0.88, 5), Math.max(far * 0.88, 5));
+    const p0 = camera.position.clone(), p1 = new THREE.Vector3(c.x, c.y, fit.dist), t0 = camTarget.clone();
+    animate(1200, t => { const e = ease(t); camera.position.lerpVectors(p0, p1, e); camTarget.lerpVectors(t0, c, e); camera.lookAt(camTarget); });
+    L.tray.forEach(ab => animate(500, t => ab.scale.setScalar(Math.max(0.01, 1 - t))));
+    tagsEl.innerHTML = '';
+  }, 200 * bridges.length + 1700);
+  res('✔ OK! 혈장에 있는 응집소가 다른 적혈구까지 붙잡아요. 적혈구가 엉겨 붙었어요! (응집)', 'bad');
+}
+
+/* ---------- 끌기 조작 ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.6);
+let drag = null;
+function pointer(e) {
+  const b = renderer.domElement.getBoundingClientRect();
+  ndc.set((e.clientX - b.left) / b.width * 2 - 1, -((e.clientY - b.top) / b.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return { x: e.clientX - b.left, y: e.clientY - b.top };
+}
+let lit = null;
+function highlight(ag) {
+  if (lit === ag) return;
+  if (lit) lit.mats.forEach(m => m.emissive.setHex(0x000000));
+  lit = ag; if (lit) lit.mats.forEach(m => m.emissive.setHex(0x3a3a3a));
+}
+renderer.domElement.addEventListener('pointerdown', e => {
+  const p = pointer(e);
+  renderer.domElement.setPointerCapture(e.pointerId);
+  const hits = ray.intersectObjects(L ? L.tray : [], true);
+  const ab = hits.length ? hits[0].object.userData.ab : null;
+  if (ab && ab.userData.state === 'tray' && !L.done) {
+    const hp = new THREE.Vector3(); ray.ray.intersectPlane(dragPlane, hp);
+    drag = { type: 'ab', ab, off: ab.position.clone().sub(hp) };
+    ab.userData.state = 'drag';
+  } else drag = { type: 'rot', x: p.x, y: p.y };
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const p = pointer(e);
+  if (drag.type === 'ab') {
+    const hp = new THREE.Vector3();
+    if (ray.ray.intersectPlane(dragPlane, hp)) { drag.ab.position.copy(hp.add(drag.off)); drag.ab.position.z = 0.6; }
+    const n = nearestAntigen(drag.ab, p.x, p.y); highlight(n ? n.ag : null);
+  } else {
+    const dx = p.x - drag.x, dy = p.y - drag.y; drag.x = p.x; drag.y = p.y;
+    rbc.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx * 0.01));
+    rbc.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), dy * 0.01));
+  }
+});
+function endDrag(e) {
+  if (!drag) return;
+  const p = pointer(e);
+  if (drag.type === 'ab') onDrop(drag.ab, p.x, p.y);
+  drag = null;
+}
+renderer.domElement.addEventListener('pointerup', endDrag);
+renderer.domElement.addEventListener('pointercancel', endDrag);
+
+/* ---------- 버튼 ---------- */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button[data-k]');
+  if (b) { sel[b.dataset.k] = b.dataset.t; setup(); }
+});
+$('againBtn').addEventListener('click', setup);
+$('viewBtn').addEventListener('click', () => {
+  const q0 = rbc.quaternion.clone(), q1 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.62, 0.3, 0));
+  animate(500, t => rbc.quaternion.slerpQuaternions(q0, q1, ease(t)));
+});
+
+/* ---------- 매 프레임 ---------- */
+const clock = new THREE.Clock();
+function frame(now) {
+  for (let i = anims.length - 1; i >= 0; i--) {
+    const a = anims[i], t = Math.min(1, (now - a.t0) / a.dur);
+    a.step(t);
+    if (t >= 1) { anims.splice(i, 1); a.done && a.done(); }
+  }
+  const time = clock.getElapsedTime();
+  if (L && !reduce) L.tray.forEach((ab, i) => {
+    if (ab.userData.state !== 'tray') return;
+    ab.position.y = slots[ab.userData.x].y + Math.sin(time * 1.6 + i) * 0.06;
+    // 살짝 흔들리며 홈의 입체 모양이 보이도록
+    ab.quaternion.copy(slotQ).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(time * 0.9 + i) * 0.22));
+  });
+  if (L && !L.zoomed) ['a', 'b'].forEach(x => {
+    const el = document.getElementById('tag-' + x); if (!el) return;
+    const off = layout === 'wide' ? new THREE.Vector3(0, -1.05, 0) : new THREE.Vector3(0, -1.0, 0);
+    const s = project(slots[x].clone().add(off));
+    el.style.left = s.x + 'px'; el.style.top = s.y + 'px';
+  });
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+new ResizeObserver(doLayout).observe(view);
+setup();
+requestAnimationFrame(frame);
+window.__test = { get L() { return L; }, get rbc() { return rbc; }, camera, project, mouthWorld, slots };
+</script>
+</body>
+</html>
