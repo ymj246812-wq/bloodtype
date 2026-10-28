@@ -163,7 +163,7 @@ function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#
 
 /* ---------- 서버 통신 ---------- */
 /* ★ 저장 서버(구글 앱스크립트 웹 앱) 주소: …/exec 로 끝나는 주소를 따옴표 안에 넣으세요 */
-var API_URL = '';
+var API_URL = 'https://script.google.com/macros/s/AKfycbx7p8qVGtgkuUAhbCi7GuG5q5-S37uFSMo6wrI2xLh_NUB20q5ISt-zNbfX5qmlnqITJw/exec';
 
 var busy = false;
 function call(op, arg, onOk, quiet) {
