@@ -43,7 +43,7 @@ button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
 .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:.85rem;font-weight:700;white-space:nowrap;transition:opacity .4s}
 .tag .pick{display:inline-block;margin-top:2px;padding:1px 8px;border-radius:99px;font-size:.75rem;background:#ffffffd9;border:1px dashed #9fb0bf;color:var(--mute);font-weight:400}
 .tag .pick.on{border:1.5px solid var(--plasma);color:var(--plasma);font-weight:700;background:#fff6dc}
-.hint{position:absolute;z-index:2;right:12px;bottom:8px;font-size:.78rem;color:var(--mute);pointer-events:none}
+.hint{position:absolute;z-index:2;right:12px;top:12px;font-size:.78rem;color:var(--mute);pointer-events:none}
 
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--mute);margin-top:8px;align-items:center}
 .dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:4px}
@@ -51,8 +51,23 @@ button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
 .msg.ok{border-color:var(--ok);color:var(--ok)}.msg.no,.msg.bad{border-color:var(--bad);color:var(--bad)}
 #act{min-height:44px}
 /* 혈장 완성 버튼: 혈장 구역 안 */
-#plasmaBtn{position:absolute;z-index:3;padding:9px 16px;font-size:1rem;box-shadow:0 4px 12px rgba(120,80,0,.25);background:#c98a00;border-color:#c98a00;color:#fff;font-weight:700}
-#plasmaBtn:hover{background:#b27a00}
+/* 제출 버튼: 크고 입체적인 버튼 + 은은한 반짝임 (누를 수 있을 때만) */
+.submit{position:absolute;z-index:3;display:inline-flex;align-items:center;gap:.45em;white-space:nowrap;
+  padding:13px 26px 12px;border:0;border-radius:999px;font-size:1.12rem;font-weight:800;letter-spacing:-.01em;color:#fff;cursor:pointer;
+  background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:0 6px 0 var(--c3),0 12px 22px rgba(0,0,0,.22);
+  transition:transform .08s,box-shadow .08s,filter .15s}
+.submit .ic{display:inline-grid;place-items:center;width:1.55em;height:1.55em;border-radius:50%;background:#fff;color:var(--c2);font-size:.9em}
+.submit:hover{filter:brightness(1.07)}
+.submit:active{transform:translateY(5px);box-shadow:0 1px 0 var(--c3),0 4px 10px rgba(0,0,0,.2)}
+.submit.ready::after{content:'';position:absolute;inset:-4px;border-radius:999px;border:3px solid var(--c1);animation:ring 1.6s ease-out infinite;pointer-events:none}
+@keyframes ring{0%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:scale(1.18,1.45)}}
+#rbcBtn:disabled,#plasmaBtn:disabled{--c1:#c3ccd5;--c2:#aab5c0;--c3:#8e9aa6;cursor:not-allowed;filter:none}
+.submit:disabled .ic{color:#9aa6b2}
+.submit:disabled::after{display:none}
+#plasmaBtn{--c1:#f2b322;--c2:#d48d00;--c3:#9c6500}
+#rbcBtn{--c1:#e9506a;--c2:#c42a45;--c3:#8f1a2f}
+@media (prefers-reduced-motion:reduce){.submit.ready::after{animation:none}}
+.ctag{position:absolute;transform:translate(-50%,-100%);z-index:2;pointer-events:none;font-size:.82rem;font-weight:800;color:#fff;background:var(--donor);padding:2px 10px;border-radius:99px;box-shadow:0 3px 8px rgba(196,48,74,.35)}
 /* 틀렸을 때: 큰 글자 + 흔들림 + 붉은 번쩍임 */
 #boom{position:absolute;z-index:4;left:50%;top:45%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;
   font-size:clamp(2.4rem,8vw,4.6rem);font-weight:900;letter-spacing:.02em;color:#fff;background:var(--bad);
@@ -69,6 +84,7 @@ button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
 @media (max-aspect-ratio:1/1){#view{height:min(80vh,760px)}}
 #view.tall .hint{display:none}
 #view.tall #soundBtn{left:auto;right:10px;top:8px;bottom:auto}
+#view.tall .submit{font-size:1.02rem;padding:11px 20px 10px}
 @media (prefers-reduced-motion:reduce){#view.shake,#boom.show{animation:none}#boom.show{opacity:1}}
 .hide{display:none!important}
 </style>
@@ -91,7 +107,9 @@ button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
   <div class="zone" id="zoneP"><span class="zl" id="zlP"></span></div>
   <div id="tags"></div>
   <div class="hint" id="hint"></div>
-  <button id="plasmaBtn" class="hide">혈장 완성하기 ✔</button>
+  <button id="rbcBtn" class="submit hide"><span class="ic">✔</span><span class="tx">이 적혈구로 결정!</span></button>
+  <button id="plasmaBtn" class="submit ready hide"><span class="ic">✔</span>혈장 완성! 제출하기</button>
+  <div id="ctag" class="ctag hide">✔ 고른 적혈구</div>
   <div id="flash"></div>
   <div id="boom" aria-live="assertive"></div>
   <button id="soundBtn">🔊 소리 켜짐</button>
@@ -254,6 +272,7 @@ function wiggle(obj, axis, done) {
 let layout = 'wide';
 const slots = { a: new THREE.Vector3(), b: new THREE.Vector3() }, slotQ = new THREE.Quaternion();
 const candPos = [];
+let candS = 0.4;           // 고르기 단계의 적혈구 크기 (세로 화면은 조금 작게)
 const SPLIT = 2.75;            // 두 구역의 경계 (가로: x, 세로: y)
 let camTarget = new THREE.Vector3(), camDist = 12;
 function fitCamera(cx, cy, halfW, halfH) {
@@ -267,20 +286,20 @@ function doLayout() {
   view.classList.toggle('tall', layout === 'tall');
   candPos.length = 0;
   if (layout === 'wide') {
-    slots.a.set(4.4, 1.25, 0); slots.b.set(4.4, -1.45, 0);
+    slots.a.set(4.4, 1.45, 0); slots.b.set(4.4, -0.95, 0);
     slotQ.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2)            // 팔이 왼쪽(적혈구 쪽)을 향함
       .premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.85)); // 홈 입구가 보이게 기울임
-    candPos.push([-1.25, 1.15], [1.25, 1.15], [-1.25, -1.35], [1.25, -1.35]);
+    candPos.push([-1.25, 1.35], [1.25, 1.35], [-1.25, -1.05], [1.25, -1.05]); candS = 0.4;
     const c = fitCamera(1.25, 0, 3.9, 2.75); camTarget = c.target; camDist = c.dist;
   } else {
     slots.a.set(-1.3, -4.3, 0); slots.b.set(1.3, -4.3, 0);
     slotQ.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.85);                   // 팔이 위(적혈구 쪽), 홈 입구가 보이게 기울임
-    candPos.push([-1.25, 1.2], [1.25, 1.2], [-1.25, -1.3], [1.25, -1.3]);
+    candPos.push([-1.2, 1.55], [1.2, 1.55], [-1.2, -0.5], [1.2, -0.5]); candS = 0.34;
     const c = fitCamera(0, -2.05, 2.75, 4.75); camTarget = c.target; camDist = c.dist;
   }
   if (L) {
     L.tray.forEach(ab => { if (ab.userData.state === 'tray' || ab.userData.state === 'pick') { ab.position.copy(slots[ab.userData.x]); ab.quaternion.copy(slotQ); } });
-    L.cands.forEach((c, i) => c.position.set(candPos[i][0], candPos[i][1], 0));
+    L.cands.forEach((c, i) => { c.position.set(candPos[i][0], candPos[i][1], 0); c.scale.setScalar(c === L.chosen ? candS * 1.25 : candS); });
   }
   if (!L || !L.zoomed) { camera.position.set(camTarget.x, camTarget.y, camDist); camera.lookAt(camTarget); }
   placeZones();
@@ -296,13 +315,17 @@ function placeZones() {
     const x = Math.round(project(new THREE.Vector3(SPLIT, 0, 0)).x);
     Object.assign(zD, { left: '0', top: '0', bottom: '0', right: 'auto', width: x + 'px', height: 'auto' });
     Object.assign(zP, { left: x + 'px', top: '0', bottom: '0', right: '0', width: 'auto', height: 'auto' });
-    Object.assign($('plasmaBtn').style, { top: '8px', right: '12px', left: 'auto', transform: 'none' });
+    const bottom = view.clientHeight - 16;                               // 각 구역의 아래 가운데
+    Object.assign($('hint').style, { right: (view.clientWidth - x + 12) + 'px' });   // 안내 글자: 적혈구 구역 오른쪽 위
+    Object.assign($('rbcBtn').style, { left: (x / 2) + 'px', top: bottom + 'px', transform: 'translate(-50%,-100%)' });
+    Object.assign($('plasmaBtn').style, { left: ((x + view.clientWidth) / 2) + 'px', top: bottom + 'px', transform: 'translate(-50%,-100%)' });
   } else {
     const y = Math.round(project(new THREE.Vector3(0, -SPLIT, 0)).y);
     Object.assign(zD, { left: '0', right: '0', top: '0', bottom: 'auto', height: y + 'px', width: 'auto' });
     Object.assign(zP, { left: '0', right: '0', top: y + 'px', bottom: '0', height: 'auto', width: 'auto' });
-    const by = Math.round(project(new THREE.Vector3(0, -6.75, 0)).y);    // 응집소 아래, 가운데
-    Object.assign($('plasmaBtn').style, { top: by + 'px', left: '50%', right: 'auto', transform: 'translate(-50%,-50%)' });
+    Object.assign($('rbcBtn').style, { left: '50%', top: (y - 14) + 'px', transform: 'translate(-50%,-100%)' });     // 적혈구 구역 아래 가운데
+    const by = Math.round(project(new THREE.Vector3(0, -6.75, 0)).y);                                                // 응집소 아래 가운데
+    Object.assign($('plasmaBtn').style, { left: '50%', top: by + 'px', transform: 'translate(-50%,-50%)' });
   }
 }
 
@@ -353,7 +376,7 @@ function setup() {
   $('zlD').textContent = `🩸 주는 사람 (${sel.d}형) · 적혈구`;
   $('zlP').textContent = `🧪 받는 사람 (${sel.r}형) · 혈장`;
   $('zoneD').style.opacity = $('zoneP').style.opacity = 1;
-  tagsEl.innerHTML = ''; act(''); $('plasmaBtn').classList.add('hide');
+  tagsEl.innerHTML = ''; act(''); ['plasmaBtn', 'rbcBtn', 'ctag'].forEach(id => $(id).classList.add('hide'));
   doLayout();
   stepPickRBC();
 }
@@ -368,20 +391,44 @@ function stepPickRBC() {
     c.scale.setScalar(0.01);
     c.userData.idx = i;
     scene.add(c); L.cands.push(c);
-    animate(400, t2 => c.scale.setScalar(Math.max(0.01, 0.4 * ease(t2))));
+    animate(400, t2 => c.scale.setScalar(Math.max(0.01, candS * ease(t2))));
   });
-  res(`① 주는 사람(${sel.d}형)의 적혈구는 어느 것일까요? 표면의 응집원을 잘 보고 하나를 눌러 고르세요.`);
+  L.chosen = null;
+  setRbcBtn();
+  $('rbcBtn').classList.remove('hide');
+  res(`① 주는 사람(${sel.d}형)의 적혈구는 어느 것일까요? 표면의 응집원을 잘 보고 하나를 누른 뒤 [이 적혈구로 결정!]을 누르세요.`);
   hint('적혈구를 눌러 고르기');
 }
-function pickRBC(c) {
+function setRbcBtn() {
+  const b = $('rbcBtn'), on = !!L.chosen;
+  b.disabled = !on; b.classList.toggle('ready', on);
+  b.querySelector('.tx').textContent = on ? '이 적혈구로 결정!' : '적혈구를 먼저 눌러 고르세요';
+  $('ctag').classList.toggle('hide', !on);
+}
+function chooseRBC(c) {
+  const prev = L.chosen;
+  L.chosen = prev === c ? null : c;                      // 같은 것을 다시 누르면 선택 취소
+  [prev, L.chosen].forEach(o => {
+    if (!o) return;
+    const on = o === L.chosen, s0 = o.scale.x, s1 = on ? candS * 1.25 : candS;
+    glow(o, on, 0x4a1a00);
+    animate(200, t => o.scale.setScalar(s0 + (s1 - s0) * t));
+  });
+  setRbcBtn();
+}
+function pickRBC() {
+  const c = L.chosen; if (!c) return;
   if (c.userData.type !== sel.d) {
     wiggle(c, new THREE.Vector3(0, 0, 1));
     wrong();
     res(`✕ ${sel.d}형 적혈구가 아니에요. 응집원의 모양과 종류를 다시 살펴보세요.`, 'no');
+    chooseRBC(c);                                         // 선택을 풀고 다시 고르게
     return;
   }
+  glow(c, false);
+  $('rbcBtn').classList.add('hide'); $('ctag').classList.add('hide');
   L.cands.filter(o => o !== c).forEach(o => fade(o, 400));
-  L.cands = [];
+  L.cands = []; L.chosen = null;
   rbc = c;
   tweenTo(c, new THREE.Vector3(0, 0, 0), new THREE.Quaternion().setFromEuler(RBC_TILT), 700, stepMakePlasma, 1);
   res(`✔ 맞아요! ${sel.d}형 적혈구를 실험대에 올렸어요.`, 'ok');
@@ -397,7 +444,7 @@ function stepMakePlasma() {
     scene.add(ab); L.tray.push(ab);
   });
   drawTags();
-  res(`② 받는 사람(${sel.r}형)의 혈장에는 어떤 응집소가 들어 있을까요? 들어 있는 응집소를 모두 눌러 고른 뒤 혈장 구역의 [혈장 완성하기]를 누르세요. 하나도 없다면 아무것도 고르지 않고 누르면 돼요.`);
+  res(`② 받는 사람(${sel.r}형)의 혈장에는 어떤 응집소가 들어 있을까요? 들어 있는 응집소를 모두 눌러 고른 뒤 [혈장 완성! 제출하기]를 누르세요. 하나도 없다면 아무것도 고르지 않고 누르면 돼요.`);
   $('plasmaBtn').classList.remove('hide');
   hint('응집소를 눌러 고르기 / 다시 누르면 빼기');
 }
@@ -594,7 +641,7 @@ renderer.domElement.addEventListener('pointerdown', e => {
   renderer.domElement.setPointerCapture(e.pointerId);
   if (L.step === 1) {
     const h = ray.intersectObjects(L.cands, true)[0];
-    if (h) pickRBC(h.object.userData.rbc);
+    if (h) chooseRBC(h.object.userData.rbc);
     return;
   }
   const h = ray.intersectObjects(L.tray, true)[0];
@@ -655,6 +702,10 @@ function frame(now) {
     });
     L.cands.forEach((c, i) => c.rotation.set(RBC_TILT.x, RBC_TILT.y + Math.sin(time * 0.8 + i * 1.7) * 0.25, 0));
   }
+  if (L && L.chosen) {
+    const s = project(L.chosen.position.clone().add(new THREE.Vector3(0, 1.25, 0)));
+    $('ctag').style.left = s.x + 'px'; $('ctag').style.top = s.y + 'px';
+  }
   if (L && !L.zoomed) L.tray.forEach(ab => {
     const el = document.getElementById('tag-' + ab.userData.x); if (!el) return;
     const s = project(slots[ab.userData.x].clone().add(new THREE.Vector3(0, -1.05, 0)));
@@ -667,6 +718,7 @@ new ResizeObserver(doLayout).observe(view);
 setup();
 requestAnimationFrame(frame);
 $('plasmaBtn').onclick = checkPlasma;
+$('rbcBtn').onclick = pickRBC;
 window.__test = { get L() { return L; }, get rbc() { return rbc; }, camera, project, mouthWorld, slots, sel };
 </script>
 </body>
