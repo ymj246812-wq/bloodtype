@@ -50,6 +50,26 @@ button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
 .msg{margin-top:10px;padding:10px 14px;border-radius:10px;background:#fff;border-left:6px solid var(--line);font-weight:700;min-height:44px}
 .msg.ok{border-color:var(--ok);color:var(--ok)}.msg.no,.msg.bad{border-color:var(--bad);color:var(--bad)}
 #act{min-height:44px}
+/* 혈장 완성 버튼: 혈장 구역 안 */
+#plasmaBtn{position:absolute;z-index:3;padding:9px 16px;font-size:1rem;box-shadow:0 4px 12px rgba(120,80,0,.25);background:#c98a00;border-color:#c98a00;color:#fff;font-weight:700}
+#plasmaBtn:hover{background:#b27a00}
+/* 틀렸을 때: 큰 글자 + 흔들림 + 붉은 번쩍임 */
+#boom{position:absolute;z-index:4;left:50%;top:45%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+  font-size:clamp(2.4rem,8vw,4.6rem);font-weight:900;letter-spacing:.02em;color:#fff;background:var(--bad);
+  padding:.08em .55em .12em;border-radius:18px;box-shadow:0 10px 30px rgba(201,42,62,.45);white-space:nowrap}
+#boom.show{animation:boom 1.1s ease-out}
+@keyframes boom{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}24%{transform:translate(-50%,-50%) scale(.95)}32%{transform:translate(-50%,-50%) scale(1)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+#flash{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 6px var(--bad),inset 0 0 80px rgba(201,42,62,.35);border-radius:14px}
+#flash.show{animation:flash .6s ease-out}
+@keyframes flash{0%,40%{opacity:1}100%{opacity:0}}
+#view.shake{animation:vshake .5s}
+@keyframes vshake{0%,100%{transform:none}12%{transform:translateX(-14px) rotate(-.6deg)}26%{transform:translateX(12px) rotate(.5deg)}40%{transform:translateX(-10px)}55%{transform:translateX(8px)}70%{transform:translateX(-5px)}85%{transform:translateX(3px)}}
+#soundBtn{position:absolute;z-index:3;left:10px;bottom:8px;padding:3px 9px;font-size:.78rem;background:#ffffffd9}
+/* 세로 화면: 실험대를 더 길게, 안내 글자는 숨기고 소리 버튼은 오른쪽 위로 */
+@media (max-aspect-ratio:1/1){#view{height:min(80vh,760px)}}
+#view.tall .hint{display:none}
+#view.tall #soundBtn{left:auto;right:10px;top:8px;bottom:auto}
+@media (prefers-reduced-motion:reduce){#view.shake,#boom.show{animation:none}#boom.show{opacity:1}}
 .hide{display:none!important}
 </style>
 </head>
@@ -71,6 +91,10 @@ button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
   <div class="zone" id="zoneP"><span class="zl" id="zlP"></span></div>
   <div id="tags"></div>
   <div class="hint" id="hint"></div>
+  <button id="plasmaBtn" class="hide">혈장 완성하기 ✔</button>
+  <div id="flash"></div>
+  <div id="boom" aria-live="assertive"></div>
+  <button id="soundBtn">🔊 소리 켜짐</button>
 </div>
 <div class="legend">
   <span><span class="dot" style="background:var(--A)"></span>응집원 A (삼각뿔 머리)</span>
@@ -240,6 +264,7 @@ function doLayout() {
   const w = view.clientWidth, h = view.clientHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   layout = w / h >= 1.05 ? 'wide' : 'tall';
+  view.classList.toggle('tall', layout === 'tall');
   candPos.length = 0;
   if (layout === 'wide') {
     slots.a.set(4.4, 1.25, 0); slots.b.set(4.4, -1.45, 0);
@@ -248,10 +273,10 @@ function doLayout() {
     candPos.push([-1.25, 1.15], [1.25, 1.15], [-1.25, -1.35], [1.25, -1.35]);
     const c = fitCamera(1.25, 0, 3.9, 2.75); camTarget = c.target; camDist = c.dist;
   } else {
-    slots.a.set(-1.3, -4.2, 0); slots.b.set(1.3, -4.2, 0);
+    slots.a.set(-1.3, -4.3, 0); slots.b.set(1.3, -4.3, 0);
     slotQ.setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.85);                   // 팔이 위(적혈구 쪽), 홈 입구가 보이게 기울임
     candPos.push([-1.25, 1.2], [1.25, 1.2], [-1.25, -1.3], [1.25, -1.3]);
-    const c = fitCamera(0, -1.2, 2.75, 3.9); camTarget = c.target; camDist = c.dist;
+    const c = fitCamera(0, -2.05, 2.75, 4.75); camTarget = c.target; camDist = c.dist;
   }
   if (L) {
     L.tray.forEach(ab => { if (ab.userData.state === 'tray' || ab.userData.state === 'pick') { ab.position.copy(slots[ab.userData.x]); ab.quaternion.copy(slotQ); } });
@@ -271,10 +296,13 @@ function placeZones() {
     const x = Math.round(project(new THREE.Vector3(SPLIT, 0, 0)).x);
     Object.assign(zD, { left: '0', top: '0', bottom: '0', right: 'auto', width: x + 'px', height: 'auto' });
     Object.assign(zP, { left: x + 'px', top: '0', bottom: '0', right: '0', width: 'auto', height: 'auto' });
+    Object.assign($('plasmaBtn').style, { top: '8px', right: '12px', left: 'auto', transform: 'none' });
   } else {
     const y = Math.round(project(new THREE.Vector3(0, -SPLIT, 0)).y);
     Object.assign(zD, { left: '0', right: '0', top: '0', bottom: 'auto', height: y + 'px', width: 'auto' });
     Object.assign(zP, { left: '0', right: '0', top: y + 'px', bottom: '0', height: 'auto', width: 'auto' });
+    const by = Math.round(project(new THREE.Vector3(0, -6.75, 0)).y);    // 응집소 아래, 가운데
+    Object.assign($('plasmaBtn').style, { top: by + 'px', left: '50%', right: 'auto', transform: 'translate(-50%,-50%)' });
   }
 }
 
@@ -283,6 +311,32 @@ let sel = { d: 'A', r: 'B' }, L = null, rbc = null;
 const tagsEl = $('tags');
 function res(t, c) { $('res').className = 'msg ' + (c || ''); $('res').textContent = t; }
 function act(html) { $('act').innerHTML = html; }
+/* 틀렸을 때 효과: "아닙니다!" + 흔들림 + 삐빅 */
+let audio = null, soundOn = true;
+function beep() {
+  if (!soundOn) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = audio.currentTime;
+    [[0, 1180], [0.13, 1180]].forEach(([d, f]) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'square'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + d);
+      g.gain.exponentialRampToValueAtTime(0.09, t0 + d + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + 0.09);
+      o.connect(g).connect(audio.destination); o.start(t0 + d); o.stop(t0 + d + 0.1);
+    });
+  } catch (e) {}
+}
+function wrong(text) {
+  const boom = $('boom'), fl = $('flash');
+  boom.textContent = text || '아닙니다!';
+  [boom, fl, view].forEach(el => el.classList.remove('show', 'shake'));
+  void view.offsetWidth;                       // 애니메이션을 처음부터 다시
+  boom.classList.add('show'); fl.classList.add('show'); view.classList.add('shake');
+  beep();
+}
+$('soundBtn').onclick = () => { soundOn = !soundOn; $('soundBtn').textContent = soundOn ? '🔊 소리 켜짐' : '🔇 소리 꺼짐'; };
 function hint(t) { $('hint').textContent = t || ''; }
 function setStep(n) {
   L.step = n;
@@ -299,7 +353,7 @@ function setup() {
   $('zlD').textContent = `🩸 주는 사람 (${sel.d}형) · 적혈구`;
   $('zlP').textContent = `🧪 받는 사람 (${sel.r}형) · 혈장`;
   $('zoneD').style.opacity = $('zoneP').style.opacity = 1;
-  tagsEl.innerHTML = ''; act('');
+  tagsEl.innerHTML = ''; act(''); $('plasmaBtn').classList.add('hide');
   doLayout();
   stepPickRBC();
 }
@@ -322,6 +376,7 @@ function stepPickRBC() {
 function pickRBC(c) {
   if (c.userData.type !== sel.d) {
     wiggle(c, new THREE.Vector3(0, 0, 1));
+    wrong();
     res(`✕ ${sel.d}형 적혈구가 아니에요. 응집원의 모양과 종류를 다시 살펴보세요.`, 'no');
     return;
   }
@@ -342,9 +397,8 @@ function stepMakePlasma() {
     scene.add(ab); L.tray.push(ab);
   });
   drawTags();
-  res(`② 받는 사람(${sel.r}형)의 혈장에는 어떤 응집소가 들어 있을까요? 들어 있는 응집소를 모두 눌러 고른 뒤 [혈장 완성하기]를 누르세요. 하나도 없다면 아무것도 고르지 않고 누르면 돼요.`);
-  act('<button class="go" id="plasmaBtn">혈장 완성하기</button>');
-  $('plasmaBtn').onclick = checkPlasma;
+  res(`② 받는 사람(${sel.r}형)의 혈장에는 어떤 응집소가 들어 있을까요? 들어 있는 응집소를 모두 눌러 고른 뒤 혈장 구역의 [혈장 완성하기]를 누르세요. 하나도 없다면 아무것도 고르지 않고 누르면 돼요.`);
+  $('plasmaBtn').classList.remove('hide');
   hint('응집소를 눌러 고르기 / 다시 누르면 빼기');
 }
 function drawTags() {
@@ -365,13 +419,14 @@ function checkPlasma() {
   const picked = L.tray.filter(ab => ab.userData.picked).map(ab => ab.userData.x).sort().join('');
   if (picked !== ANTIBODY[sel.r].slice().sort().join('')) {
     L.tray.filter(ab => ab.userData.picked).forEach(ab => wiggle(ab, new THREE.Vector3(0, 0, 1)));
+    wrong();
     res(`✕ ${sel.r}형의 혈장과 달라요. ${sel.r}형 사람의 혈장에 어떤 응집소가 있는지 다시 생각해 보세요.`, 'no');
     return;
   }
   L.tray.filter(ab => !ab.userData.picked).forEach(ab => fade(ab, 400));
   L.tray = L.tray.filter(ab => ab.userData.picked);
   L.tray.forEach(ab => { glow(ab, false); ab.scale.setScalar(1); ab.userData.state = 'tray'; });
-  act('');
+  $('plasmaBtn').classList.add('hide');
   stepTry();
 }
 
@@ -434,6 +489,7 @@ function onDrop(ab, px, py) {
   if (FIT[x] !== hit.ag.t) {
     ab.userData.state = 'busy';
     wiggle(ab, new THREE.Vector3(0, 0, 1), () => backToTray(ab));
+    wrong();
     (L.tried[x] = L.tried[x] || new Set()).add(hit.ag.t);
     // 혈장의 모든 응집소를 적혈구의 모든 응집원에 맞춰 봤는데 맞는 게 없으면 끝
     const kinds = new Set(ANTIGEN[sel.d]);
@@ -610,6 +666,7 @@ function frame(now) {
 new ResizeObserver(doLayout).observe(view);
 setup();
 requestAnimationFrame(frame);
+$('plasmaBtn').onclick = checkPlasma;
 window.__test = { get L() { return L; }, get rbc() { return rbc; }, camera, project, mouthWorld, slots, sel };
 </script>
 </body>
