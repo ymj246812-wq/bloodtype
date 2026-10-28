@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수혈 관계 탐구</title>
+<style>
+:root{--A:#139a8a;--B:#7b4fd6;--rbc:#d6334a;--rbc2:#a91f35;--ok:#1b8a4b;--bad:#c92a3e;--slate:#34495c;--line:#cfdae3;--bg:#eef3f7;--mute:#5d6f7d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#14222e;font-family:'Malgun Gothic',system-ui,sans-serif;line-height:1.5}
+main{max-width:980px;margin:0 auto;padding:14px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+h1{font-size:1.4rem;margin:0 0 8px}h2{font-size:1.05rem;margin:0 0 8px}
+button,select,input{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:inherit}
+input{cursor:text}
+button.p{background:#14222e;color:#fff;border-color:#14222e}
+button.sel{background:#14222e;color:#fff}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
+.hide{display:none!important}
+.tabs button{border-radius:8px 8px 0 0}.tabs button.on{background:#14222e;color:#fff}
+.note{color:var(--mute);font-size:.85rem}
+#status{font-size:.85rem;padding:6px 10px;border-radius:8px;margin-bottom:10px;background:#fff;border:1px solid var(--line)}
+#status.err{background:#fbe0e3;border-color:var(--bad);color:var(--bad);font-weight:700}
+#status.good{color:var(--ok)}
+
+.lab{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.stage{position:relative;width:min(400px,100%);aspect-ratio:1/1;flex:0 0 auto;background:#f7fafc;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stage svg.rbc{width:100%;height:100%;display:block}
+.stage.clump svg.rbc{animation:wob .5s 2}
+@keyframes wob{50%{transform:scale(1.04) rotate(3deg)}}
+.nb{animation:pop .7s both}@keyframes pop{from{opacity:0;transform:scale(.3)}}
+.ag{position:absolute;width:10%}
+.ag svg,.ab svg{display:block;width:100%;height:auto}
+.stage.hint .ag:not(.bound){filter:drop-shadow(0 0 5px #14222e)}
+.ab{width:96px;touch-action:none;user-select:none;-webkit-user-select:none}
+.ab.bound{position:absolute;width:24%;transform-origin:22% 4.44%}
+.ab.virt{opacity:.3}
+.tray{flex:1 1 180px;min-width:170px;text-align:center;background:var(--bg);border:2px dashed var(--line);border-radius:12px;padding:12px}
+.tray h3{margin:0 0 8px;font-size:.9rem;color:var(--mute)}
+.tray .it{display:inline-block;margin:4px 8px;font-size:.85rem}
+.tray .ab{cursor:grab;margin:0 auto 2px}
+.ab.ghost{opacity:.3}
+.tray.off{opacity:.45;pointer-events:none}
+.ab.float{position:fixed;z-index:50;pointer-events:none;transform:translate(-50%,-50%);filter:drop-shadow(0 6px 8px rgba(0,0,0,.25))}
+.ab.shake{animation:shake .5s}
+@keyframes shake{0%,100%{transform:translate(-50%,-50%)}15%{transform:translate(calc(-50% - 12px),-50%) rotate(-10deg)}30%{transform:translate(calc(-50% + 12px),-50%) rotate(10deg)}45%{transform:translate(calc(-50% - 10px),-50%) rotate(-8deg)}60%{transform:translate(calc(-50% + 10px),-50%) rotate(8deg)}80%{transform:translate(calc(-50% - 5px),-50%)}}
+.badge{display:inline-block;margin-top:2px;padding:1px 8px;border-radius:99px;border:1px dashed var(--line);color:var(--mute);font-size:.75rem}
+.badge.own{border:1px solid var(--rbc);color:var(--rbc);font-weight:700}
+.msg{margin-top:10px;padding:10px 14px;border-radius:10px;background:var(--bg);border-left:6px solid var(--line);font-weight:700;min-height:44px}
+.msg.ok{border-color:var(--ok);color:var(--ok)}.msg.no,.msg.bad{border-color:var(--bad);color:var(--bad)}
+
+table{border-collapse:collapse;text-align:center}
+th{font-size:.8rem;color:var(--mute);padding:3px 6px}
+td .cb{width:46px;height:42px;font-weight:700;font-size:1.1rem;padding:0}
+td .o{background:#dff3e6;color:var(--ok);border-color:var(--ok)}
+td .x{background:#fbe0e3;color:var(--bad);border-color:var(--bad)}
+.sm td div{width:30px;height:28px;border:1px solid var(--line);border-radius:4px;font-size:.85rem;line-height:26px}
+.sm .o{background:#dff3e6;color:var(--ok)}.sm .x{background:#fbe0e3;color:var(--bad)}.sm .wrong{outline:3px solid #ff9800}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.tag{font-size:.75rem;padding:1px 8px;border-radius:99px;background:#e6eef4}.tag.d{background:#dff3e6;color:var(--ok)}
+</style>
+</head>
+<body><main>
+
+<div id="status">서버 연결 확인 중…</div>
+
+<div id="login" class="card">
+  <h1>🩸 수혈 관계 탐구</h1>
+  <div class="row">
+    <input id="nm" placeholder="이름 입력" maxlength="10">
+    <button class="p" id="joinBtn">입장</button>
+    <button id="teacherBtn">교사용</button>
+  </div>
+  <div class="row hide" id="pwRow">
+    <input id="pw" type="password" placeholder="교사용 비밀번호">
+    <button class="p" id="pwBtn">확인</button>
+  </div>
+</div>
+
+<div id="wait" class="card hide"><h2>⏳ 모둠 배정을 기다리는 중이에요</h2><p>선생님이 모둠을 정해 주면 자동으로 화면이 바뀝니다.</p></div>
+
+<div id="main" class="hide">
+  <div class="card"><b id="who"></b></div>
+  <div class="tabs row">
+    <button data-tab="lab" class="on">① 실험</button>
+    <button data-tab="chart">② 우리 모둠 관계도</button>
+    <button data-tab="share">③ 모둠별 결과 공유</button>
+  </div>
+
+  <div id="t-lab" class="card">
+    <h2>응집소를 끌어다 적혈구의 응집원에 끼워 보세요</h2>
+    <div class="row">주는 사람(적혈구) <span id="bd"></span></div>
+    <div class="row">받는 사람(혈장) <span id="br"></span></div>
+    <div class="lab"><div class="stage" id="stage"></div><div class="tray" id="tray"></div></div>
+    <div id="res" class="msg"></div>
+    <div class="row">
+      <span id="rec" class="row hide" style="margin:0">관찰한 결과를 관계도에 기록:
+        <button data-rec="1">○ 수혈 가능</button><button data-rec="2">✕ 수혈 불가</button>
+      </span>
+      <button id="againBtn">↺ 다시 하기</button>
+    </div>
+  </div>
+
+  <div id="t-chart" class="card hide">
+    <h2>우리 모둠 수혈 관계도</h2>
+    <p class="note">칸을 누르면 ? → ○(가능) → ✕(불가) 순서로 바뀌고, 모둠원 모두에게 보여요.</p>
+    <div id="cht"></div>
+    <div id="sum" class="note"></div>
+    <div class="row"><button class="p" id="submitBtn">모둠 결과 제출</button><span id="sub"></span></div>
+  </div>
+
+  <div id="t-share" class="card hide"><h2>모둠별 결과</h2><div id="shr" class="grid"></div></div>
+</div>
+
+<div id="teacher" class="hide">
+  <div class="card">
+    <h2>교사 화면</h2>
+    <div class="row">
+      <button class="p" id="autoBtn">4명씩 자동 배정</button>
+      <button id="resetBtn">전체 초기화</button>
+      <span class="note">직접 배정은 아래 목록에서 모둠 번호를 고르세요.</span>
+    </div>
+    <div id="stu" class="grid"></div>
+  </div>
+  <div class="card"><h2>모둠별 결과 (주황 테두리 = 정답과 다른 칸)</h2><div id="tshr" class="grid"></div></div>
+</div>
+
+<script>
+/* 화면에 오류를 보여 주는 장치 */
+function showStatus(text, kind) {
+  var el = document.getElementById('status');
+  el.textContent = text;
+  el.className = kind || '';
+}
+window.onerror = function (msg) { showStatus('화면 오류: ' + msg, 'err'); };
+
+/* =========== 모양 모델링 부분: 여기를 바꾸면 모양이 바뀝니다 ===========
+   응집원(볼록한 머리): 가로세로 40칸 안에 그리기. 줄기는 아래(20,40)에서 (20,20)까지.
+   응집소 홈(오목): x = 결합부위 가운데, 위쪽 면은 y=4, 가로 40(x-20~x+20) 세로 30 칸. */
+var SHAPES = {
+  antigen: {
+    A: '<polygon points="20,1 33,24 7,24"/>',
+    B: '<circle cx="20" cy="12" r="11"/>'
+  },
+  notch: {
+    A: function (x) { return 'M' + (x-20) + ' 4H' + (x-13) + 'L' + x + ' 27L' + (x+13) + ' 4H' + (x+20) + 'V34H' + (x-20) + 'Z'; },
+    B: function (x) { return 'M' + (x-20) + ' 4H' + (x-7.5) + 'A11 11 0 1 0 ' + (x+7.5) + ' 4H' + (x+20) + 'V34H' + (x-20) + 'Z'; }
+  }
+};
+/* ===================================================================== */
+
+var TY = ['A', 'B', 'AB', 'O'];
+var ANTIGEN = { A: ['A'], B: ['B'], AB: ['A', 'B'], O: [] };      // 적혈구의 응집원
+var ANTIBODY = { A: ['b'], B: ['a'], AB: [], O: ['a', 'b'] };     // 혈장의 응집소 (a=α, b=β)
+var FIT = { a: 'A', b: 'B' };                                     // 응집소 → 맞는 응집원
+var INV = { A: 'a', B: 'b' };
+var GREEK = { a: 'α', b: 'β' };
+function fits(r, d) {
+  return ANTIGEN[d].some(function (g) { return ANTIBODY[r].some(function (x) { return FIT[x] === g; }); });
+}
+function byId(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+
+/* ---------- 서버 통신 ---------- */
+/* ★ 저장 서버(구글 앱스크립트 웹 앱) 주소: …/exec 로 끝나는 주소를 따옴표 안에 넣으세요 */
+var API_URL = '';
+
+var busy = false;
+function call(op, arg, onOk, quiet) {
+  if (!API_URL) {
+    showStatus('저장 서버 주소가 아직 설정되지 않았어요. 실험은 할 수 있지만 입장·저장은 안 됩니다.', 'err');
+    return;
+  }
+  fetch(API_URL, { method: 'POST', body: JSON.stringify({ op: op, arg: arg || {} }) })
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (!j.ok) throw new Error(j.error || '알 수 없는 오류');
+      onOk(JSON.parse(j.data));
+    })
+    .catch(function (e) {
+      if (quiet) return;
+      showStatus('오류: ' + ((e && e.message) || e) + ' (인터넷 연결과 저장 서버 주소를 확인하세요)', 'err');
+    });
+}
+
+var me = '', pw = '', isTeacher = false, S = { students: {}, teams: {} }, timer = null;
+
+call('ping', {}, function () { showStatus('서버 연결됨 ✔', 'good'); });
+
+function startSync() {
+  if (timer) return;
+  timer = setInterval(function () {
+    if (busy || document.hidden) return;
+    if (document.activeElement && document.activeElement.tagName === 'SELECT') return;
+    busy = true;
+    call('state', {}, function (s) { busy = false; S = s; draw(); }, true);
+    setTimeout(function () { busy = false; }, 8000);
+  }, 4000);
+}
+
+byId('joinBtn').addEventListener('click', function () {
+  var n = byId('nm').value.trim();
+  if (!n) { showStatus('이름을 입력하세요.', 'err'); return; }
+  showStatus('입장하는 중…');
+  call('join', { name: n }, function (s) {
+    me = n; S = s;
+    showStatus('입장 완료 ✔', 'good');
+    byId('login').classList.add('hide');
+    draw(); startSync();
+  });
+});
+byId('nm').addEventListener('keydown', function (e) { if (e.key === 'Enter') byId('joinBtn').click(); });
+
+byId('teacherBtn').addEventListener('click', function () { byId('pwRow').classList.remove('hide'); byId('pw').focus(); });
+byId('pwBtn').addEventListener('click', function () {
+  var p = byId('pw').value;
+  showStatus('확인하는 중…');
+  call('teacher', { pw: p }, function (s) {
+    pw = p; isTeacher = true; S = s;
+    showStatus('교사 화면 ✔', 'good');
+    byId('login').classList.add('hide');
+    byId('teacher').classList.remove('hide');
+    draw(); startSync();
+  });
+});
+
+/* ---------- 학생 화면 ---------- */
+function myTeam() { var st = S.students[me]; return st ? st.team : ''; }
+function teamData() { return S.teams[myTeam()] || { chart: {}, done: false }; }
+function members(t) { return Object.keys(S.students).filter(function (n) { return S.students[n].team === t; }); }
+
+function draw() {
+  if (isTeacher) { drawTeacher(); return; }
+  var t = myTeam();
+  byId('wait').classList.toggle('hide', !!t);
+  byId('main').classList.toggle('hide', !t);
+  if (!t) return;
+  byId('who').textContent = me + ' · ' + t + '모둠 (' + members(t).join(', ') + ')';
+  var c = teamData().chart;
+  byId('cht').innerHTML = table(c, true, false);
+  byId('sub').innerHTML = teamData().done ? '<span class="tag d">제출됨</span>' : '';
+  byId('sum').textContent = summary(c);
+  byId('shr').innerHTML = shareCards(false);
+}
+
+function table(c, edit, check) {
+  var h = '<table class="' + (edit ? '' : 'sm') + '"><tr><th>받는↓ 주는→</th>';
+  TY.forEach(function (d) { h += '<th>' + d + '형</th>'; });
+  h += '</tr>';
+  TY.forEach(function (r) {
+    h += '<tr><th>' + r + '형</th>';
+    TY.forEach(function (d) {
+      var v = c[r + '_' + d] || 0;
+      var cl = v == 1 ? 'o' : v == 2 ? 'x' : '';
+      var tx = v == 1 ? '○' : v == 2 ? '✕' : '?';
+      var wrong = check && v && ((v == 1) === fits(r, d)) ? ' wrong' : '';
+      h += '<td>' + (edit
+        ? '<button class="cb ' + cl + '" data-r="' + r + '" data-d="' + d + '">' + tx + '</button>'
+        : '<div class="' + cl + wrong + '">' + tx + '</div>') + '</td>';
+    });
+    h += '</tr>';
+  });
+  return h + '</table>';
+}
+function summary(c) {
+  return TY.map(function (d) {
+    var to = TY.filter(function (r) { return c[r + '_' + d] == 1; });
+    return d + '형 → ' + (to.length ? to.join(', ') : '(없음)');
+  }).join('   |   ');
+}
+function shareCards(check) {
+  var ks = Object.keys(S.teams).sort(function (a, b) { return a - b; });
+  if (!ks.length) return '<p class="note">아직 없어요.</p>';
+  return ks.map(function (k) {
+    var t = S.teams[k];
+    return '<div class="card"><b>' + esc(k) + '모둠</b> <span class="tag ' + (t.done ? 'd' : '') + '">' + (t.done ? '제출 완료' : '작성 중') + '</span>' +
+      '<div class="note">' + esc(members(k).join(', ')) + '</div>' + table(t.chart, false, check) +
+      '<div class="note">주는 → 받는<br>' + esc(summary(t.chart)).split('   |   ').join('<br>') + '</div></div>';
+  }).join('');
+}
+function setCell(key, v) {
+  var t = myTeam(); if (!t) return;
+  if (!S.teams[t]) S.teams[t] = { chart: {}, done: false };
+  S.teams[t].chart[key] = v; draw();
+  call('cell', { name: me, key: key, val: v }, function (s) { S = s; draw(); });
+}
+byId('cht').addEventListener('click', function (e) {
+  var b = e.target.closest('.cb'); if (!b) return;
+  var key = b.dataset.r + '_' + b.dataset.d;
+  setCell(key, ((teamData().chart[key] || 0) + 1) % 3);
+});
+byId('submitBtn').addEventListener('click', function () {
+  call('submit', { name: me }, function (s) { S = s; draw(); showStatus('모둠 결과를 제출했어요 ✔', 'good'); });
+});
+document.querySelectorAll('.tabs button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.querySelectorAll('.tabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
+    ['lab', 'chart', 'share'].forEach(function (n) { byId('t-' + n).classList.toggle('hide', n !== b.dataset.tab); });
+  });
+});
+
+/* ---------- 교사 화면 ---------- */
+function drawTeacher() {
+  var ns = Object.keys(S.students);
+  byId('stu').innerHTML = ns.length ? ns.map(function (n) {
+    var opts = '<option value="">미배정</option>';
+    for (var i = 1; i <= 10; i++) opts += '<option value="' + i + '"' + (S.students[n].team == i ? ' selected' : '') + '>' + i + '</option>';
+    return '<div class="row"><b>' + esc(n) + '</b><select data-n="' + esc(n) + '">' + opts + '</select>모둠</div>';
+  }).join('') : '<p class="note">입장한 학생이 아직 없어요.</p>';
+  byId('tshr').innerHTML = shareCards(true);
+}
+byId('stu').addEventListener('change', function (e) {
+  var el = e.target; if (!el.dataset.n) return;
+  call('assign', { pw: pw, name: el.dataset.n, team: el.value }, function (s) { S = s; drawTeacher(); });
+});
+byId('autoBtn').addEventListener('click', function () {
+  call('auto', { pw: pw }, function (s) { S = s; drawTeacher(); });
+});
+byId('resetBtn').addEventListener('click', function () {
+  if (!confirm('모든 학생과 결과를 지울까요?')) return;
+  call('reset', { pw: pw }, function (s) { S = s; drawTeacher(); });
+});
+
+/* ---------- 실험: 끌어다 맞추기 ---------- */
+var sel = { d: 'A', r: 'B' }, L = null;
+var ANG = [-135, -45, 45, 135];
+var stage = byId('stage'), tray = byId('tray');
+
+function agSVG(t) {
+  return '<svg viewBox="0 0 40 40" fill="var(--' + t + ')"><line x1="20" y1="40" x2="20" y2="20" stroke="var(--' + t + ')" stroke-width="5"/>' + SHAPES.antigen[t] + '</svg>';
+}
+function abSVG(x) {
+  var N = SHAPES.notch[FIT[x]];
+  return '<svg viewBox="0 0 100 90"><path d="M50 86V60M50 60L22 32M50 60L78 32" stroke="var(--slate)" stroke-width="8" stroke-linecap="round" fill="none"/>' +
+    [22, 78].map(function (cx) { return '<path d="' + N(cx) + '" fill="var(--slate)" stroke="var(--slate)" stroke-width="3" stroke-linejoin="round"/>'; }).join('') + '</svg>';
+}
+function res(t, c) { byId('res').className = 'msg ' + (c || ''); byId('res').textContent = t; }
+function typeButtons(k) {
+  return TY.map(function (t) { return '<button data-k="' + k + '" data-t="' + t + '" class="' + (sel[k] === t ? 'sel' : '') + '">' + t + '형</button>'; }).join('');
+}
+function setup() {
+  var d = sel.d, r = sel.r;
+  byId('bd').innerHTML = typeButtons('d');
+  byId('br').innerHTML = typeButtons('r');
+  L = { slots: [], matched: {}, done: false };
+  if (ANTIGEN[d].length) ANG.forEach(function (a, i) { L.slots.push({ a: a, t: ANTIGEN[d][i % ANTIGEN[d].length], bound: false }); });
+  stage.className = 'stage';
+  var h = '<svg class="rbc" viewBox="0 0 400 400"><circle cx="200" cy="200" r="70" fill="var(--rbc)" stroke="var(--rbc2)" stroke-width="4"/><circle cx="200" cy="200" r="34" fill="var(--rbc2)" opacity=".45"/><text x="200" y="210" text-anchor="middle" font-size="28" font-weight="700" fill="#fff">' + d + '형</text></svg>';
+  L.slots.forEach(function (s, i) {
+    var a = s.a * Math.PI / 180;
+    h += '<div class="ag" data-i="' + i + '" data-t="' + s.t + '" style="left:' + (200 + 88 * Math.cos(a)) / 4 + '%;top:' + (200 + 88 * Math.sin(a)) / 4 + '%;transform:translate(-50%,-50%) rotate(' + (s.a + 90) + 'deg)">' + agSVG(s.t) + '</div>';
+  });
+  stage.innerHTML = h;
+  tray.className = 'tray';
+  tray.innerHTML = '<h3>' + r + '형 혈장 · 응집소 두 종류</h3>' + ['a', 'b'].map(function (x) {
+    var own = ANTIBODY[r].indexOf(x) >= 0;
+    return '<div class="it"><div class="ab" data-x="' + x + '">' + abSVG(x) + '</div>응집소 ' + GREEK[x] + '<br><span class="badge ' + (own ? 'own' : '') + '">' + (own ? '혈장에 있음' : '혈장에 없음') + '</span></div>';
+  }).join('');
+  byId('rec').classList.add('hide');
+  if (!L.slots.length) ending();
+  else res('응집소를 끌어다 적혈구의 응집원에 맞춰 보세요. 모양이 맞아야 끼워집니다.');
+}
+function bindAll(g, own) {
+  var F = g === 'A' ? 84 : 88;
+  L.slots.forEach(function (s, i) {
+    if (s.t !== g || s.bound) return;
+    s.bound = true;
+    var a = s.a * Math.PI / 180, c = document.createElement('div');
+    c.className = 'ab bound' + (own ? '' : ' virt');
+    c.innerHTML = abSVG(INV[g]);
+    c.style.left = (200 + F * Math.cos(a)) / 4 + '%';
+    c.style.top = (200 + F * Math.sin(a)) / 4 + '%';
+    c.style.transform = 'translate(-22%,-4.44%) rotate(' + (s.a - 90) + 'deg)';
+    stage.appendChild(c);
+    stage.querySelector('.ag[data-i="' + i + '"]').classList.add('bound');
+  });
+}
+function drop(x, e, f) {
+  var best = null, bd = 50;
+  var fr = f.getBoundingClientRect();
+  var pts = [[e.clientX, e.clientY], [fr.left + .22 * fr.width, fr.top + .21 * fr.height], [fr.left + .78 * fr.width, fr.top + .21 * fr.height]];
+  stage.querySelectorAll('.ag:not(.bound)').forEach(function (el) {
+    var b = el.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2;
+    pts.forEach(function (p) { var dd = Math.hypot(p[0] - cx, p[1] - cy); if (dd < bd) { bd = dd; best = el; } });
+  });
+  if (!best) { f.remove(); return; }
+  var g = best.dataset.t;
+  if (FIT[x] !== g) {
+    f.classList.add('shake');
+    setTimeout(function () { f.remove(); }, 500);
+    res('✕ 모양이 맞지 않아 끼워지지 않아요. 다시 해 보세요!', 'no');
+    return;
+  }
+  f.remove();
+  bindAll(g, ANTIBODY[sel.r].indexOf(x) >= 0);
+  L.matched[g] = true;
+  var need = ANTIGEN[sel.d].filter(function (v, i, arr) { return arr.indexOf(v) === i; }).length;
+  if (Object.keys(L.matched).length < need) { res('✔ OK! 딱 맞아요. 다른 응집원에 맞는 응집소도 찾아보세요.', 'ok'); return; }
+  ending();
+}
+function ending() {
+  L.done = true;
+  tray.classList.add('off');
+  var d = sel.d, r = sel.r;
+  if (!ANTIGEN[d].length) res('이 적혈구에는 응집원이 없어 응집소가 끼워질 곳이 없어요. 적혈구는 어떻게 될까요?', 'ok');
+  else if (fits(r, d)) {
+    stage.classList.add('clump');
+    var svg = stage.querySelector('svg.rbc');
+    [[50, 50], [350, 50], [50, 350], [350, 350]].forEach(function (p, i) {
+      svg.insertAdjacentHTML('afterbegin', '<g class="nb" style="transform-origin:' + p[0] + 'px ' + p[1] + 'px;animation-delay:' + (i * .12) + 's"><circle cx="' + p[0] + '" cy="' + p[1] + '" r="44" fill="var(--rbc)" stroke="var(--rbc2)" stroke-width="4"/></g>');
+    });
+    res('✔ OK! 혈장에 있는 응집소가 끼워져 다른 적혈구까지 붙잡아요. 적혈구가 엉겨 붙었어요!', 'bad');
+  } else res('✔ OK! 모양은 맞지만 이 응집소는 받는 사람 혈장에 없어요(흐리게 표시). 적혈구는 어떻게 될까요?', 'ok');
+  byId('rec').classList.remove('hide');
+}
+
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-k]');
+  if (b) { sel[b.dataset.k] = b.dataset.t; setup(); }
+  var rb = e.target.closest('button[data-rec]');
+  if (rb) {
+    var v = +rb.dataset.rec;
+    setCell(sel.r + '_' + sel.d, v);
+    res('관계도에 기록했어요: ' + sel.d + '형 → ' + sel.r + '형 ' + (v == 1 ? '○' : '✕'));
+  }
+});
+byId('againBtn').addEventListener('click', setup);
+
+tray.addEventListener('pointerdown', function (e) {
+  var el = e.target.closest('.ab');
+  if (!el || L.done) return;
+  e.preventDefault();
+  try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  var x = el.dataset.x, f = document.createElement('div');
+  f.className = 'ab float'; f.innerHTML = abSVG(x);
+  document.body.appendChild(f);
+  function mv(ev) { f.style.left = ev.clientX + 'px'; f.style.top = ev.clientY + 'px'; }
+  function up(ev) {
+    el.removeEventListener('pointermove', mv);
+    el.removeEventListener('pointerup', up);
+    el.removeEventListener('pointercancel', up);
+    el.classList.remove('ghost'); stage.classList.remove('hint');
+    drop(x, ev, f);
+  }
+  mv(e);
+  el.classList.add('ghost'); stage.classList.add('hint');
+  el.addEventListener('pointermove', mv);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+});
+
+setup();
+</script>
+</main></body></html>
