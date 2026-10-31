@@ -3,124 +3,199 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>수혈 관계 탐구 3D</title>
+<title>수혈 실험대</title>
 <style>
-:root{--A:#14a38b;--B:#8b5cf6;--rbc:#d23245;--ok:#1b8a4b;--bad:#c92a3e;--line:#cfdae3;--bg:#eef3f7;--mute:#5d6f7d;--ink:#14222e;
-  --donor:#c4304a;--donorBg:rgba(214,51,74,.07);--plasma:#a86d00;--plasmaBg:rgba(244,190,60,.17)}
+@font-face{font-family:'Label';src:url('./fonts/label.woff') format('woff');font-display:swap}
+:root{
+  --A:#14a38b;--B:#8b5cf6;
+  --bench:#E7ECEA;--paper:#FFFFFF;--ink:#1D252C;--mute:#5B6770;--line:#C7D1CE;
+  --blood:#B2182F;--bloodDeep:#7E0F21;--donorTint:#F7E7E9;
+  --straw:#D99A0B;--strawDeep:#7F5800;--plasmaTint:#FBF0CF;
+  --ok:#1E7A45;--bad:#C2192F;
+  --tA:#F3C21A;--tB:#EE93B3;--tAB:#FFFFFF;--tO:#2F78BF;
+  --disp:'Label','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'Malgun Gothic',system-ui,sans-serif;line-height:1.5}
-main{max-width:1100px;margin:0 auto;padding:14px}
-h1{font-size:1.3rem;margin:0 0 4px}
-.note{color:var(--mute);font-size:.85rem;margin:0 0 8px}
-.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:12px}
-.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:4px 0}
-.row .lbl{min-width:7.5em;font-weight:700;font-size:.92rem}
-.row .lbl.d{color:var(--donor)}.row .lbl.p{color:var(--plasma)}
-button{font:inherit;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;color:inherit}
-button.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
-button.go{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:700}
-button:focus-visible{outline:3px solid var(--B);outline-offset:2px}
+body{margin:0;background:var(--bench);color:var(--ink);font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',system-ui,sans-serif;line-height:1.55;-webkit-tap-highlight-color:transparent;word-break:keep-all;overflow-wrap:anywhere}
+body.embed{background:transparent}
+main{max-width:1100px;margin:0 auto;padding:18px 16px 28px}
+body.embed main{padding:0}
+.top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.top h1{font-family:var(--disp);font-weight:400;font-size:1.7rem;margin:0;letter-spacing:-.01em}
+.top a{color:var(--mute);font-size:.9rem}
+body.embed .top{display:none}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--tO);outline-offset:2px}
 
-/* 단계 표시 */
-.steps{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 8px;padding:0;list-style:none;counter-reset:s}
-.steps li{counter-increment:s;font-size:.85rem;padding:4px 10px 4px 6px;border-radius:99px;background:#fff;border:1px solid var(--line);color:var(--mute)}
-.steps li::before{content:counter(s);display:inline-grid;place-items:center;width:1.4em;height:1.4em;margin-right:5px;border-radius:50%;background:#e3eaf0;font-weight:700;font-size:.8rem}
-.steps li.now{border-color:var(--ink);color:var(--ink);font-weight:700}
-.steps li.now::before{background:var(--ink);color:#fff}
-.steps li.done{color:var(--ok)}.steps li.done::before{content:'✓';background:#dff3e6;color:var(--ok)}
+/* 수혈 카드: 주는 사람 → 받는 사람 */
+.txcard{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin-bottom:14px}
+.bag{background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.bag .bar{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:6px 12px;color:#fff;font-weight:700}
+.bag .bar small{font-weight:400;opacity:.9;font-size:.8rem}
+.bag.donor .bar{background:var(--blood)}
+.bag.recip .bar{background:var(--strawDeep)}
+.bag .body{display:flex;align-items:center;gap:14px;padding:10px 12px}
+.tile{flex:0 0 auto;min-width:2.9em;height:1.75em;padding:0 .25em;display:flex;align-items:baseline;justify-content:center;padding-top:.32em;font-family:var(--disp);font-size:2.6rem;line-height:1;border:1.5px solid var(--ink);border-radius:4px}
+.tile small{font-size:.38em;margin-left:.08em}
+.t-A{background:var(--tA)}.t-B{background:var(--tB)}.t-AB{background:var(--tAB)}.t-O{background:var(--tO);color:#fff}
+.bag .chg{display:flex;flex-direction:column;gap:5px;min-width:0}
+.bag .chg span{font-size:.8rem;color:var(--mute)}
+.types{display:flex;gap:4px;flex-wrap:wrap}
+.tb{min-width:2.6em;padding:5px 8px;border:1.5px solid var(--line);border-radius:4px;background:var(--paper);font-weight:700;font-size:.92rem}
+.tb.sel{border-color:var(--ink);box-shadow:inset 0 -4px 0 var(--ink)}
+.tb:hover{border-color:var(--ink)}
+.arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--ink);font-weight:700;font-size:.85rem;padding:0 2px}
+.arrow svg{width:46px;height:22px}
+@media (max-width:640px){
+  .txcard{gap:6px}
+  .arrow{font-size:.75rem;padding:0}.arrow svg{width:26px}
+  .bag .bar{padding:4px 8px;font-size:.92rem}.bag .bar small{display:none}
+  .bag .body{flex-direction:column;align-items:stretch;gap:6px;padding:8px}
+  .tile{font-size:2.2rem;height:1.6em;padding-top:.26em}
+  .bag .chg span{display:none}
+  .types{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+  .tb{min-width:0;padding:5px 0;font-size:.85rem}
+}
+/* 단계 */
+.steps{display:flex;margin:0 0 10px;padding:0;list-style:none;counter-reset:s;border-bottom:1.5px solid var(--line)}
+.steps li{counter-increment:s;flex:1 1 0;display:flex;align-items:center;gap:7px;padding:6px 4px 8px;font-size:.9rem;color:var(--mute);margin-bottom:-1.5px;border-bottom:3px solid transparent;white-space:nowrap;min-width:0}
+.steps li::before{content:counter(s);flex:0 0 auto;display:grid;place-items:center;width:1.55em;height:1.55em;border-radius:50%;border:1.5px solid currentColor;font-weight:700;font-size:.8rem}
+.steps li.now{color:var(--ink);font-weight:700;border-bottom-color:var(--ink)}
+.steps li.now::before{background:var(--ink);border-color:var(--ink);color:#fff}
+.steps li.done{color:var(--ok)}.steps li.done::before{content:'✓';background:var(--ok);border-color:var(--ok);color:#fff}
+@media (max-width:560px){.steps li{font-size:.84rem;gap:4px;flex:0 0 auto;padding-right:10px}.steps li:not(.now) span{display:none}.steps li.now{flex:1 1 auto}}
+
+.guide{margin:0 0 10px;font-size:1.05rem;font-weight:600;min-height:3.2em;color:var(--ink)}
+@media (max-width:560px){.guide{font-size:.98rem;min-height:6.3em}}
+.guide.ok{color:var(--ok)}.guide.no,.guide.bad{color:var(--bad)}
 
 /* 실험대 */
-#view{position:relative;width:100%;height:min(68vh,600px);min-height:380px;border-radius:14px;overflow:hidden;background:#f4f7fa;border:1px solid var(--line);touch-action:none}
+#view{position:relative;width:100%;height:clamp(400px,56vw,600px);border-radius:6px;overflow:hidden;background:#F5F7F6;border:1.5px solid var(--ink);touch-action:none}
+@media (max-width:700px){#view{height:min(178vw,820px)}}
 #view canvas{position:relative;z-index:1;display:block;width:100%;height:100%}
 .zone{position:absolute;z-index:0;transition:opacity .6s}
-.zone .zl{position:absolute;top:8px;left:12px;font-weight:700;font-size:.95rem;padding:2px 10px;border-radius:99px;background:#ffffffd9}
-#zoneD{background:radial-gradient(90% 80% at 50% 50%,rgba(255,255,255,.9),var(--donorBg))}
-#zoneD .zl{color:var(--donor);border:1.5px solid var(--donor)}
-#zoneP{background:linear-gradient(180deg,rgba(255,236,170,.35),var(--plasmaBg));border-left:2px dashed #d9b25a}
-#zoneP.tall{border-left:0;border-top:2px dashed #d9b25a}
-#zoneP .zl{color:var(--plasma);border:1.5px solid #d9a227}
+.zone .zl{position:absolute;top:10px;left:12px;font-weight:700;font-size:.92rem;padding:3px 10px;border-radius:3px;color:#fff}
+#zoneD{background:var(--donorTint)}
+#zoneD .zl{background:var(--blood)}
+#zoneP{background:var(--plasmaTint);border-left:1.5px dashed var(--strawDeep)}
+#zoneP.tall{border-left:0;border-top:1.5px dashed var(--strawDeep)}
+#zoneP .zl{background:var(--strawDeep)}
 #tags{position:absolute;inset:0;z-index:2;pointer-events:none}
-.tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:.85rem;font-weight:700;white-space:nowrap;transition:opacity .4s}
-.tag .pick{display:inline-block;margin-top:2px;padding:1px 8px;border-radius:99px;font-size:.75rem;background:#ffffffd9;border:1px dashed #9fb0bf;color:var(--mute);font-weight:400}
-.tag .pick.on{border:1.5px solid var(--plasma);color:var(--plasma);font-weight:700;background:#fff6dc}
-.hint{position:absolute;z-index:2;right:12px;top:12px;font-size:.78rem;color:var(--mute);pointer-events:none}
+.tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:.88rem;font-weight:700;white-space:nowrap;transition:opacity .4s}
+.tag .pick{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:3px;font-size:.76rem;background:var(--paper);border:1px dashed var(--strawDeep);color:var(--strawDeep);font-weight:600}
+.tag .pick.on{border-style:solid;background:var(--straw);border-color:var(--straw);color:#fff}
+.hint{position:absolute;z-index:2;right:12px;top:13px;font-size:.78rem;color:var(--mute);pointer-events:none}
 
-.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--mute);margin-top:8px;align-items:center}
-.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:4px}
-.msg{margin-top:10px;padding:10px 14px;border-radius:10px;background:#fff;border-left:6px solid var(--line);font-weight:700;min-height:44px}
-.msg.ok{border-color:var(--ok);color:var(--ok)}.msg.no,.msg.bad{border-color:var(--bad);color:var(--bad)}
-#act{min-height:44px}
-/* 혈장 완성 버튼: 혈장 구역 안 */
-/* 제출 버튼: 크고 입체적인 버튼 + 은은한 반짝임 (누를 수 있을 때만) */
-.submit{position:absolute;z-index:3;display:inline-flex;align-items:center;gap:.45em;white-space:nowrap;
-  padding:13px 26px 12px;border:0;border-radius:999px;font-size:1.12rem;font-weight:800;letter-spacing:-.01em;color:#fff;cursor:pointer;
-  background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:0 6px 0 var(--c3),0 12px 22px rgba(0,0,0,.22);
-  transition:transform .08s,box-shadow .08s,filter .15s}
-.submit .ic{display:inline-grid;place-items:center;width:1.55em;height:1.55em;border-radius:50%;background:#fff;color:var(--c2);font-size:.9em}
-.submit:hover{filter:brightness(1.07)}
-.submit:active{transform:translateY(5px);box-shadow:0 1px 0 var(--c3),0 4px 10px rgba(0,0,0,.2)}
-.submit.ready::after{content:'';position:absolute;inset:-4px;border-radius:999px;border:3px solid var(--c1);animation:ring 1.6s ease-out infinite;pointer-events:none}
-@keyframes ring{0%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:scale(1.18,1.45)}}
-#rbcBtn:disabled,#plasmaBtn:disabled{--c1:#c3ccd5;--c2:#aab5c0;--c3:#8e9aa6;cursor:not-allowed;filter:none}
-.submit:disabled .ic{color:#9aa6b2}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.84rem;color:var(--mute);margin-top:8px;align-items:center}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:5px}
+
+/* 제출 버튼 */
+.submit{position:absolute;z-index:3;display:inline-flex;align-items:center;gap:.5em;white-space:nowrap;
+  padding:13px 26px 12px;border:0;border-radius:10px;font-family:var(--disp);font-size:1.2rem;font-weight:400;color:#fff;
+  background:var(--c2);box-shadow:0 6px 0 var(--c3),0 10px 18px rgba(0,0,0,.18);transition:transform .08s,box-shadow .08s,filter .15s}
+.submit svg{width:1.1em;height:1.1em}
+.submit:hover{filter:brightness(1.08)}
+.submit:active{transform:translateY(5px);box-shadow:0 1px 0 var(--c3),0 3px 8px rgba(0,0,0,.18)}
+.submit.ready::after{content:'';position:absolute;inset:-5px;border-radius:14px;border:3px solid var(--c2);animation:ring 1.6s ease-out infinite;pointer-events:none}
+@keyframes ring{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.12,1.4)}}
+#rbcBtn{--c2:var(--blood);--c3:var(--bloodDeep)}
+#plasmaBtn{--c2:#C98700;--c3:#7F5800}
+#rbcBtn:disabled{--c2:#9AA6AE;--c3:#6E7A82;cursor:not-allowed;filter:none}
 .submit:disabled::after{display:none}
-#plasmaBtn{--c1:#f2b322;--c2:#d48d00;--c3:#9c6500}
-#rbcBtn{--c1:#e9506a;--c2:#c42a45;--c3:#8f1a2f}
-@media (prefers-reduced-motion:reduce){.submit.ready::after{animation:none}}
-.ctag{position:absolute;transform:translate(-50%,-100%);z-index:2;pointer-events:none;font-size:.82rem;font-weight:800;color:#fff;background:var(--donor);padding:2px 10px;border-radius:99px;box-shadow:0 3px 8px rgba(196,48,74,.35)}
-/* 틀렸을 때: 큰 글자 + 흔들림 + 붉은 번쩍임 */
-#boom{position:absolute;z-index:4;left:50%;top:45%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;
-  font-size:clamp(2.4rem,8vw,4.6rem);font-weight:900;letter-spacing:.02em;color:#fff;background:var(--bad);
-  padding:.08em .55em .12em;border-radius:18px;box-shadow:0 10px 30px rgba(201,42,62,.45);white-space:nowrap}
+.ctag{position:absolute;transform:translate(-50%,-100%);z-index:2;pointer-events:none;font-size:.82rem;font-weight:700;color:#fff;background:var(--blood);padding:2px 9px;border-radius:3px}
+
+/* 틀렸을 때 */
+#boom{position:absolute;z-index:5;left:50%;top:45%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+  font-family:var(--disp);font-size:clamp(2.6rem,8vw,4.8rem);color:#fff;background:var(--bad);padding:.06em .5em .1em;border-radius:8px;white-space:nowrap;box-shadow:0 8px 0 #7d0f1e}
 #boom.show{animation:boom 1.1s ease-out}
-@keyframes boom{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.18)}24%{transform:translate(-50%,-50%) scale(.95)}32%{transform:translate(-50%,-50%) scale(1)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
-#flash{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 6px var(--bad),inset 0 0 80px rgba(201,42,62,.35);border-radius:14px}
+@keyframes boom{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}14%{opacity:1;transform:translate(-50%,-50%) scale(1.16)}24%{transform:translate(-50%,-50%) scale(.95)}32%{transform:translate(-50%,-50%) scale(1)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+#flash{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 6px var(--bad),inset 0 0 70px rgba(194,25,47,.3)}
 #flash.show{animation:flash .6s ease-out}
 @keyframes flash{0%,40%{opacity:1}100%{opacity:0}}
 #view.shake{animation:vshake .5s}
 @keyframes vshake{0%,100%{transform:none}12%{transform:translateX(-14px) rotate(-.6deg)}26%{transform:translateX(12px) rotate(.5deg)}40%{transform:translateX(-10px)}55%{transform:translateX(8px)}70%{transform:translateX(-5px)}85%{transform:translateX(3px)}}
-#soundBtn{position:absolute;z-index:3;left:10px;bottom:8px;padding:3px 9px;font-size:.78rem;background:#ffffffd9}
-/* 세로 화면: 실험대를 더 길게, 안내 글자는 숨기고 소리 버튼은 오른쪽 위로 */
-@media (max-aspect-ratio:1/1){#view{height:min(80vh,760px)}}
+
+/* 결과 도장: 응집 / 응집 없음 */
+.stamp{position:absolute;z-index:4;left:18px;top:16px;transform-origin:20% 50%;pointer-events:none;font-family:var(--disp);font-size:clamp(2.6rem,9vw,5rem);line-height:1;
+  padding:.12em .36em .16em;border:.09em solid currentColor;border-radius:.16em;background:rgba(255,255,255,.82);
+  transform:rotate(-8deg);white-space:nowrap;outline:.04em solid currentColor;outline-offset:-.17em}
+.stamp.yes{color:var(--bad)}
+.stamp.no{color:#2D5B85;font-size:clamp(2rem,6.5vw,3.6rem)}
+.stamp.show{animation:slam .55s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes slam{0%{opacity:0;transform:rotate(-16deg) scale(2.6)}60%{opacity:1;transform:rotate(-7deg) scale(.92)}100%{opacity:1;transform:rotate(-8deg) scale(1)}}
+
+/* 기록 패널 */
+#act{position:absolute;z-index:4;left:50%;bottom:14px;transform:translateX(-50%);width:min(560px,calc(100% - 24px));
+  background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;padding:12px 14px 10px;text-align:center;box-shadow:0 8px 0 rgba(29,37,44,.12)}
+#act .q{margin:0 0 10px;font-weight:600}
+#act .q b{font-family:var(--disp);font-weight:400;font-size:1.15em}
+#act .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ch{padding:12px 8px 11px;border-radius:6px;border:1.5px solid var(--ink);background:var(--paper);font-family:var(--disp);font-size:1.15rem;box-shadow:0 4px 0 var(--ink);transition:transform .08s,box-shadow .08s}
+.ch:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.ch.yes.sel{background:var(--ok);border-color:var(--ok);color:#fff;box-shadow:0 4px 0 #11502b}
+.ch.no.sel{background:var(--bad);border-color:var(--bad);color:#fff;box-shadow:0 4px 0 #7d0f1e}
+#act .link{margin-top:8px;border:0;background:none;color:var(--mute);text-decoration:underline;font-size:.88rem;padding:4px}
+
+#soundBtn{position:absolute;z-index:3;left:10px;bottom:10px;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;font-size:.78rem;background:var(--paper);border:1px solid var(--line);border-radius:4px;color:var(--mute)}
+#soundBtn svg{width:15px;height:15px}
 #view.tall .hint{display:none}
-#view.tall #soundBtn{left:auto;right:10px;top:8px;bottom:auto}
-#view.tall .submit{font-size:1.02rem;padding:11px 20px 10px}
-@media (prefers-reduced-motion:reduce){#view.shake,#boom.show{animation:none}#boom.show{opacity:1}}
+#view.tall #soundBtn{left:auto;right:10px;top:10px;bottom:auto}
+#view.tall .submit{font-size:1.08rem;padding:11px 20px 10px}
+@media (prefers-reduced-motion:reduce){.submit.ready::after{animation:none}#view.shake,#boom.show,.stamp.show{animation:none}#boom.show{opacity:1}}
 .hide{display:none!important}
 </style>
 </head>
 <body><main>
-<h1>🩸 수혈 관계 탐구 · 3D 실험대</h1>
-<p class="note">3D 시제품이에요. 실험할 조합을 고른 뒤, 실험대를 직접 차려 보세요. (이 페이지는 저장 기능이 없어요)</p>
-
-<div class="card">
-  <div class="row"><span class="lbl d">주는 사람</span><span id="bd"></span></div>
-  <div class="row"><span class="lbl p">받는 사람</span><span id="br"></span></div>
+<div class="top">
+  <h1>수혈 실험대</h1>
+  <a href="./">학생용 앱으로 가기</a>
 </div>
 
+<section class="txcard" aria-label="이번 실험의 수혈 조합">
+  <div class="bag donor">
+    <div class="bar">주는 사람 <small>혈액을 내주는 쪽</small></div>
+    <div class="body">
+      <div class="tile" id="tileD"></div>
+      <div class="chg"><span>혈액형 바꾸기</span><div class="types" id="bd"></div></div>
+    </div>
+  </div>
+  <div class="arrow" aria-hidden="true">
+    <svg viewBox="0 0 46 22"><path d="M2 11h36" stroke="currentColor" stroke-width="3" fill="none"/><path d="M32 3l10 8-10 8" stroke="currentColor" stroke-width="3" fill="none" stroke-linejoin="round"/></svg>
+    수혈
+  </div>
+  <div class="bag recip">
+    <div class="bar">받는 사람 <small>혈액을 받는 쪽</small></div>
+    <div class="body">
+      <div class="tile" id="tileR"></div>
+      <div class="chg"><span>혈액형 바꾸기</span><div class="types" id="br"></div></div>
+    </div>
+  </div>
+</section>
+
 <ol class="steps" id="steps">
-  <li>적혈구 고르기</li><li>혈장 만들기</li><li>맞춰 보기</li><li>결과 기록</li>
+  <li><span>적혈구 고르기</span></li><li><span>혈장 만들기</span></li><li><span>맞춰 보기</span></li><li><span>기록하기</span></li>
 </ol>
+<p id="res" class="guide" aria-live="polite"></p>
 
 <div id="view">
   <div class="zone" id="zoneD"><span class="zl" id="zlD"></span></div>
   <div class="zone" id="zoneP"><span class="zl" id="zlP"></span></div>
   <div id="tags"></div>
   <div class="hint" id="hint"></div>
-  <button id="rbcBtn" class="submit hide"><span class="ic">✔</span><span class="tx">이 적혈구로 결정!</span></button>
-  <button id="plasmaBtn" class="submit ready hide"><span class="ic">✔</span>혈장 완성! 제출하기</button>
-  <div id="ctag" class="ctag hide">✔ 고른 적혈구</div>
+  <button id="rbcBtn" class="submit hide"><svg viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="tx">이 적혈구로 결정</span></button>
+  <button id="plasmaBtn" class="submit ready hide"><svg viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>혈장 완성</button>
+  <div id="ctag" class="ctag hide">고른 적혈구</div>
+  <div id="stamp" class="stamp hide" aria-live="assertive"></div>
   <div id="flash"></div>
   <div id="boom" aria-live="assertive"></div>
-  <button id="soundBtn">🔊 소리 켜짐</button>
+  <div id="act" class="hide"></div>
+  <button id="soundBtn"></button>
 </div>
 <div class="legend">
-  <span><span class="dot" style="background:var(--A)"></span>응집원 A (삼각뿔 머리)</span>
-  <span><span class="dot" style="background:var(--B)"></span>응집원 B (공 모양 머리)</span>
-  <span><span class="dot" style="background:#5f7f9e"></span>응집소 (끝에 홈이 2개)</span>
+  <span><span class="dot" style="background:var(--A)"></span>응집원 A: 삼각뿔 머리</span>
+  <span><span class="dot" style="background:var(--B)"></span>응집원 B: 공 모양 머리</span>
+  <span><span class="dot" style="background:#5f7f9e"></span>응집소: Y자 끝에 홈 2개</span>
 </div>
-<div id="res" class="msg"></div>
-<div class="row" id="act" style="margin-top:8px"></div>
 </main>
 
 <script type="module">
@@ -146,6 +221,12 @@ const ANTIBODY = { A: ['b'], B: ['a'], AB: [], O: ['a', 'b'] };
 const FIT = { a: 'A', b: 'B' }, GREEK = { a: 'α', b: 'β' };
 const $ = id => document.getElementById(id);
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EMBED = new URLSearchParams(location.search).has('embed');   // 학생용 앱 안에 들어갈 때
+if (EMBED) {
+  document.body.classList.add('embed');
+  const post = () => parent.postMessage({ type: 'bt-height', h: document.documentElement.scrollHeight }, '*');
+  new ResizeObserver(post).observe(document.body); addEventListener('load', post);
+}
 
 /* ---------- 3D 기본 ---------- */
 const view = $('view');
@@ -332,7 +413,7 @@ function placeZones() {
 /* ---------- 실험 진행 ---------- */
 let sel = { d: 'A', r: 'B' }, L = null, rbc = null;
 const tagsEl = $('tags');
-function res(t, c) { $('res').className = 'msg ' + (c || ''); $('res').textContent = t; }
+function res(t, c) { $('res').className = 'guide ' + (c || ''); $('res').textContent = t; }
 function act(html) { $('act').innerHTML = html; }
 /* 틀렸을 때 효과: "아닙니다!" + 흔들림 + 삐빅 */
 let audio = null, soundOn = true;
@@ -359,13 +440,45 @@ function wrong(text) {
   boom.classList.add('show'); fl.classList.add('show'); view.classList.add('shake');
   beep();
 }
-$('soundBtn').onclick = () => { soundOn = !soundOn; $('soundBtn').textContent = soundOn ? '🔊 소리 켜짐' : '🔇 소리 꺼짐'; };
+function tone(seq) {
+  if (!soundOn) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = audio.currentTime;
+    seq.forEach(([d, f1, f2, len, vol, type]) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f1, t0 + d); o.frequency.exponentialRampToValueAtTime(f2, t0 + d + len);
+      g.gain.setValueAtTime(0.0001, t0 + d); g.gain.exponentialRampToValueAtTime(vol, t0 + d + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + d + len);
+      o.connect(g).connect(audio.destination); o.start(t0 + d); o.stop(t0 + d + len + 0.02);
+    });
+  } catch (e) {}
+}
+const SPK = '<svg viewBox="0 0 20 20"><path d="M3 8h3l4-3v10l-4-3H3z" fill="currentColor"/>';
+function drawSound() { $('soundBtn').innerHTML = SPK + (soundOn ? '<path d="M13 7a4 4 0 010 6M15 5a7 7 0 010 10" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>소리 켬' : '<path d="M13 8l5 5M18 8l-5 5" stroke="currentColor" stroke-width="1.6"/></svg>소리 끔'); }
+$('soundBtn').onclick = () => { soundOn = !soundOn; drawSound(); };
+drawSound();
+/* 결과 도장 */
+function stamp(on) {
+  const s = $('stamp');
+  s.textContent = on ? '응집' : '응집 없음';
+  s.className = 'stamp ' + (on ? 'yes' : 'no');
+  $('zlD').style.opacity = $('zlP').style.opacity = 0;
+  void s.offsetWidth; s.classList.add('show');
+  if (on) {
+    view.classList.remove('shake'); void view.offsetWidth; view.classList.add('shake');
+    tone([[0, 150, 48, 0.42, 0.5], [0.02, 90, 40, 0.3, 0.3, 'triangle']]);       // 쿵
+  } else tone([[0, 520, 520, 0.18, 0.08], [0.16, 660, 660, 0.25, 0.08]]);      // 띵동
+}
 function hint(t) { $('hint').textContent = t || ''; }
 function setStep(n) {
   L.step = n;
   [...$('steps').children].forEach((li, i) => { li.className = i + 1 < n ? 'done' : i + 1 === n ? 'now' : ''; });
 }
-function typeButtons(k) { return TY.map(t => `<button data-k="${k}" data-t="${t}" class="${sel[k] === t ? 'sel' : ''}">${t}형</button>`).join(''); }
+function typeButtons(k) { return TY.map(t => `<button data-k="${k}" data-t="${t}" class="tb ${sel[k] === t ? 'sel' : ''}" aria-label="${t}형">${t}</button>`).join(''); }
+function drawTiles() {
+  [['tileD', sel.d], ['tileR', sel.r]].forEach(([id, t]) => { const el = $(id); el.className = 'tile t-' + t; el.innerHTML = `${t}<small>형</small>`; });
+}
 const shuffle = a => a.map(v => [Math.random(), v]).sort((p, q) => p[0] - q[0]).map(p => p[1]);
 
 function setup() {
@@ -373,8 +486,11 @@ function setup() {
   scene.children.filter(o => o.isGroup).forEach(o => scene.remove(o));
   anims = []; rbc = null;
   L = { step: 1, tray: [], cands: [], tried: {}, zoomed: false, docked: [], done: false };
-  $('zlD').textContent = `🩸 주는 사람 (${sel.d}형) · 적혈구`;
-  $('zlP').textContent = `🧪 받는 사람 (${sel.r}형) · 혈장`;
+  $('zlD').textContent = `주는 사람 ${sel.d}형의 적혈구`;
+  $('zlP').textContent = `받는 사람 ${sel.r}형의 혈장`;
+  drawTiles();
+  $('zlD').style.opacity = $('zlP').style.opacity = 1;
+  $('stamp').className = 'stamp hide'; $('act').classList.add('hide');
   $('zoneD').style.opacity = $('zoneP').style.opacity = 1;
   tagsEl.innerHTML = ''; act(''); ['plasmaBtn', 'rbcBtn', 'ctag'].forEach(id => $(id).classList.add('hide'));
   doLayout();
@@ -396,13 +512,13 @@ function stepPickRBC() {
   L.chosen = null;
   setRbcBtn();
   $('rbcBtn').classList.remove('hide');
-  res(`① 주는 사람(${sel.d}형)의 적혈구는 어느 것일까요? 표면의 응집원을 잘 보고 하나를 누른 뒤 [이 적혈구로 결정!]을 누르세요.`);
+  res(`주는 사람(${sel.d}형)의 적혈구는 어느 것일까요? 표면의 응집원을 잘 보고 하나를 누른 뒤 [이 적혈구로 결정]을 누르세요.`);
   hint('적혈구를 눌러 고르기');
 }
 function setRbcBtn() {
   const b = $('rbcBtn'), on = !!L.chosen;
   b.disabled = !on; b.classList.toggle('ready', on);
-  b.querySelector('.tx').textContent = on ? '이 적혈구로 결정!' : '적혈구를 먼저 눌러 고르세요';
+  b.querySelector('.tx').textContent = on ? '이 적혈구로 결정' : '적혈구를 먼저 누르세요';
   $('ctag').classList.toggle('hide', !on);
 }
 function chooseRBC(c) {
@@ -421,7 +537,7 @@ function pickRBC() {
   if (c.userData.type !== sel.d) {
     wiggle(c, new THREE.Vector3(0, 0, 1));
     wrong();
-    res(`✕ ${sel.d}형 적혈구가 아니에요. 응집원의 모양과 종류를 다시 살펴보세요.`, 'no');
+    res(`${sel.d}형 적혈구가 아니에요. 표면에 붙은 응집원의 모양과 종류를 다시 살펴보세요.`, 'no');
     chooseRBC(c);                                         // 선택을 풀고 다시 고르게
     return;
   }
@@ -431,7 +547,7 @@ function pickRBC() {
   L.cands = []; L.chosen = null;
   rbc = c;
   tweenTo(c, new THREE.Vector3(0, 0, 0), new THREE.Quaternion().setFromEuler(RBC_TILT), 700, stepMakePlasma, 1);
-  res(`✔ 맞아요! ${sel.d}형 적혈구를 실험대에 올렸어요.`, 'ok');
+  res(`맞아요. ${sel.d}형 적혈구를 실험대에 올렸어요.`, 'ok');
 }
 
 /* ② 혈장 만들기: 받는 사람의 혈장에 들어 있는 응집소를 고릅니다 */
@@ -444,14 +560,14 @@ function stepMakePlasma() {
     scene.add(ab); L.tray.push(ab);
   });
   drawTags();
-  res(`② 받는 사람(${sel.r}형)의 혈장에는 어떤 응집소가 들어 있을까요? 들어 있는 응집소를 모두 눌러 고른 뒤 [혈장 완성! 제출하기]를 누르세요. 하나도 없다면 아무것도 고르지 않고 누르면 돼요.`);
+  res(`받는 사람(${sel.r}형)의 혈장에는 어떤 응집소가 들어 있을까요? 들어 있는 응집소를 모두 누른 뒤 [혈장 완성]을 누르세요. 하나도 없다면 아무것도 누르지 말고 [혈장 완성]만 누르면 돼요.`);
   $('plasmaBtn').classList.remove('hide');
-  hint('응집소를 눌러 고르기 / 다시 누르면 빼기');
+  hint('응집소를 누르면 혈장에 넣고, 다시 누르면 빼요');
 }
 function drawTags() {
   tagsEl.innerHTML = L.tray.map(ab => {
     const x = ab.userData.x, st = ab.userData.state;
-    const pick = st === 'pick' ? `<br><span class="pick ${ab.userData.picked ? 'on' : ''}">${ab.userData.picked ? '✔ 혈장에 넣음' : '눌러서 넣기'}</span>` : '';
+    const pick = st === 'pick' ? `<br><span class="pick ${ab.userData.picked ? 'on' : ''}">${ab.userData.picked ? '혈장에 넣었어요' : '누르면 넣어요'}</span>` : '';
     return `<div class="tag" id="tag-${x}">응집소 ${GREEK[x]}${pick}</div>`;
   }).join('');
 }
@@ -467,7 +583,7 @@ function checkPlasma() {
   if (picked !== ANTIBODY[sel.r].slice().sort().join('')) {
     L.tray.filter(ab => ab.userData.picked).forEach(ab => wiggle(ab, new THREE.Vector3(0, 0, 1)));
     wrong();
-    res(`✕ ${sel.r}형의 혈장과 달라요. ${sel.r}형 사람의 혈장에 어떤 응집소가 있는지 다시 생각해 보세요.`, 'no');
+    res(`${sel.r}형의 혈장과 달라요. ${sel.r}형인 사람의 혈장에 어떤 응집소가 있는지 다시 생각해 보세요.`, 'no');
     return;
   }
   L.tray.filter(ab => !ab.userData.picked).forEach(ab => fade(ab, 400));
@@ -482,15 +598,15 @@ function stepTry() {
   setStep(3);
   drawTags();
   if (!L.tray.length) {
-    res(`✔ 맞아요! ${sel.r}형의 혈장에는 응집소가 없어요. 적혈구에 붙을 응집소가 없으니 적혈구는 어떻게 될까요?`, 'ok');
+    res(`맞아요. ${sel.r}형의 혈장에는 응집소가 없어요. 적혈구에 붙을 응집소가 없으니 적혈구는 그대로예요.`, 'ok');
     return finish(false);
   }
   if (!rbc.userData.antigens.length) {
-    res(`✔ 혈장 완성! 그런데 ${sel.d}형 적혈구에는 응집원이 없어 응집소가 끼워질 곳이 없어요. 적혈구는 어떻게 될까요?`, 'ok');
+    res(`혈장을 맞게 만들었어요. 그런데 ${sel.d}형 적혈구에는 응집원이 없어서 응집소가 붙을 곳이 없어요.`, 'ok');
     return finish(false);
   }
-  res(`✔ 혈장 완성! ③ 혈장의 응집소를 끌어다 적혈구의 응집원에 맞춰 보세요. 홈 모양이 맞아야 끼워져요.`, 'ok');
-  hint('응집소 끌기: 맞춰 보기 · 빈 곳 끌기: 적혈구 돌려 보기');
+  res(`혈장 완성. 이제 혈장의 응집소를 끌어다 적혈구의 응집원에 맞춰 보세요. 홈 모양이 맞아야 끼워져요.`, 'ok');
+  hint('응집소를 끌면 맞춰 보고, 빈 곳을 끌면 적혈구가 돌아가요');
 }
 
 function dockTarget(ab, k, ag) {
@@ -542,9 +658,9 @@ function onDrop(ab, px, py) {
     const kinds = new Set(ANTIGEN[sel.d]);
     const allTried = L.tray.every(o => [...kinds].every(g => FIT[o.userData.x] !== g ? (L.tried[o.userData.x] || new Set()).has(g) : false));
     if (allTried) {
-      res(`✕ 응집소 ${GREEK[x]}의 홈에는 응집원 ${hit.ag.t}가 들어가지 않아요. 혈장의 응집소 중 이 적혈구의 응집원에 맞는 것이 하나도 없어요. 적혈구는 어떻게 될까요?`, 'no');
+      res(`응집소 ${GREEK[x]}의 홈에는 응집원 ${hit.ag.t}가 들어가지 않아요. 이 혈장에는 ${sel.d}형 적혈구의 응집원에 맞는 응집소가 하나도 없어요.`, 'no');
       setTimeout(() => finish(false), 700);
-    } else res(`✕ 응집소 ${GREEK[x]}의 홈에는 응집원 ${hit.ag.t}가 들어가지 않아요. 다른 응집원이나 다른 응집소로도 해 보세요.`, 'no');
+    } else res(`응집소 ${GREEK[x]}의 홈에는 응집원 ${hit.ag.t}가 들어가지 않아요. 다른 응집원이나 다른 응집소로도 해 보세요.`, 'no');
     return;
   }
   // 맞음: 끌어온 응집소가 결합하고, 같은 응집원 자리마다 같은 응집소가 따라 붙습니다
@@ -558,7 +674,7 @@ function onDrop(ab, px, py) {
     dock(c, n % 2, ag, 160 * (++n));
   });
   L.tray = L.tray.filter(o => o !== ab);
-  res(`✔ OK! 응집소 ${GREEK[x]}의 홈에 응집원 ${g}가 딱 맞아요. 어떻게 되는지 지켜보세요…`, 'ok');
+  res(`딱 맞아요! 응집소 ${GREEK[x]}의 홈에 응집원 ${g}가 끼워졌어요. 어떻게 되는지 지켜보세요.`, 'ok');
   const cur = L;
   setTimeout(() => { if (L === cur) clump(); }, 160 * n + 800);
 }
@@ -601,22 +717,29 @@ function clump() {
     $('zoneD').style.opacity = $('zoneP').style.opacity = 0;
     rbc.updateMatrixWorld(true);
     const c = new THREE.Vector3().setFromMatrixPosition(rbc.matrixWorld);
-    const fit = fitCamera(c.x, c.y, Math.max(far * 0.88, 5), Math.max(far * 0.88, 5));
-    const p0 = camera.position.clone(), p1 = new THREE.Vector3(c.x, c.y, fit.dist), t0 = camTarget.clone();
-    animate(1200, t => { const e = ease(t); camera.position.lerpVectors(p0, p1, e); camTarget.lerpVectors(t0, c, e); camera.lookAt(camTarget); });
-    res('✔ 응집소가 다른 적혈구까지 붙잡아 적혈구들이 엉겨 붙었어요! 이런 현상을 무엇이라고 할까요?', 'bad');
-    finish(true);
+    const half = Math.max(far * 0.85, 5), fit = fitCamera(c.x, c.y, half, half * 1.32);
+    const aim = new THREE.Vector3(c.x, c.y - half * 0.3, 0);                   // 덩어리를 화면 위쪽으로 (아래에 기록 패널)
+    const p0 = camera.position.clone(), p1 = new THREE.Vector3(aim.x, aim.y, fit.dist), t0 = camTarget.clone();
+    animate(1200, t => { const e = ease(t); camera.position.lerpVectors(p0, p1, e); camTarget.lerpVectors(t0, aim, e); camera.lookAt(camTarget); }, () => {
+      if (L !== cur) return;
+      stamp(true);
+      res('응집이 일어났어요! 응집소 하나가 두 적혈구의 응집원을 한꺼번에 붙잡아서, 적혈구끼리 엉겨 붙어 덩어리가 되었어요.', 'bad');
+      finish(true);
+    });
   }, 200 * bridges.length + 1500);
 }
 
 /* ④ 결과 기록 */
-function finish() {
+function finish(clumped) {
   L.done = true;
   setStep(4);
   L.tray.forEach(ab => { ab.userData.state = 'off'; });
-  act(`<span style="font-weight:700">④ ${sel.d}형 → ${sel.r}형 수혈은?</span>
-    <button data-rec="1">○ 수혈 가능</button><button data-rec="2">✕ 수혈 불가</button>
-    <button id="againBtn">↺ 처음부터 다시</button>`);
+  hint('');
+  if (!clumped) stamp(false);
+  act(`<p class="q">주는 사람 <b>${sel.d}형</b>의 혈액을 받는 사람 <b>${sel.r}형</b>에게 수혈할 수 있을까요?</p>
+    <div class="choices"><button data-rec="1" class="ch yes">수혈할 수 있다</button><button data-rec="2" class="ch no">수혈할 수 없다</button></div>
+    <button id="againBtn" class="link">처음부터 다시 하기</button>`);
+  $('act').classList.remove('hide');
   $('againBtn').onclick = setup;
 }
 
@@ -681,13 +804,21 @@ document.addEventListener('click', e => {
   const r = e.target.closest('button[data-rec]');
   if (r) {
     document.querySelectorAll('button[data-rec]').forEach(x => x.classList.toggle('sel', x === r));
-    res(`관계도에 ${sel.d}형 → ${sel.r}형: ${r.dataset.rec === '1' ? '○ 수혈 가능' : '✕ 수혈 불가'}(으)로 기록했어요. (시제품이라 저장되지는 않아요)`);
+    const v = +r.dataset.rec, txt = v === 1 ? '수혈할 수 있다' : '수혈할 수 없다';
+    if (EMBED) { parent.postMessage({ type: 'bt-record', key: sel.r + '_' + sel.d, v, d: sel.d, r: sel.r }, '*'); res('우리 모둠 관계도에 기록하는 중이에요…'); }
+    else res(`골랐어요: ${sel.d}형 → ${sel.r}형, ${txt}. 모둠 관계도 저장은 학생용 앱에서 돼요.`);
   }
+});
+
+addEventListener('message', e => {
+  const m = e.data || {};
+  if (m.type === 'bt-recorded') res(m.ok ? `우리 모둠 관계도에 기록했어요: ${m.d}형 → ${m.r}형 ${m.v === 1 ? '○' : '✕'}. 혈액형을 바꿔 다른 조합도 실험해 보세요.` : (m.msg || '기록하지 못했어요. 잠시 후 다시 눌러 보세요.'), m.ok ? 'ok' : 'no');
 });
 
 /* ---------- 매 프레임 ---------- */
 const clock = new THREE.Clock();
 function frame(now) {
+  if (window.__pause) { requestAnimationFrame(frame); return; }   // 이미지 만들 때만 씀
   for (let i = anims.length - 1; i >= 0; i--) {
     const a = anims[i], t = Math.min(1, (now - a.t0) / a.dur);
     a.step(t);
@@ -719,7 +850,7 @@ setup();
 requestAnimationFrame(frame);
 $('plasmaBtn').onclick = checkPlasma;
 $('rbcBtn').onclick = pickRBC;
-window.__test = { get L() { return L; }, get rbc() { return rbc; }, camera, project, mouthWorld, slots, sel };
+window.__test = { get L() { return L; }, get rbc() { return rbc; }, camera, project, mouthWorld, slots, sel, THREE, renderer, scene, makeRBC, makeAntibody, RBC_TILT };
 </script>
 </body>
 </html>
