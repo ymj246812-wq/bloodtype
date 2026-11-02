@@ -838,7 +838,7 @@ document.addEventListener('click', e => {
 
 addEventListener('message', e => {
   const m = e.data || {};
-  if (m.type === 'bt-recorded') res(m.ok ? `우리 모둠 진행판에 기록했어요: ${m.d}형 → ${m.r}형 ${m.v === 1 ? '○' : '✕'}. 진행판에서 다음 빈칸을 골라 계속해 보세요.` : (m.msg || '기록하지 못했어요. 잠시 후 다시 눌러 보세요.'), m.ok ? 'ok' : 'no');
+  if (m.type === 'bt-recorded') res(m.ok ? `우리 모둠 진행판에 기록했어요: ${m.d}형 → ${m.r}형, ${m.v === 1 ? '수혈할 수 있다' : '수혈할 수 없다'}. 진행판에서 다음 빈칸을 골라 계속해 보세요.` : (m.msg || '기록하지 못했어요. 잠시 후 다시 눌러 보세요.'), m.ok ? 'ok' : 'no');
   if (m.type === 'bt-set' && TY.includes(m.d) && TY.includes(m.r)) {
     if (assigned && sel.d === m.d && sel.r === m.r && L && L.step > 1 && !L.done) return;   // 이미 하고 있는 실험
     sel.d = m.d; sel.r = m.r; assigned = true; setup();
