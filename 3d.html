@@ -849,12 +849,6 @@ renderer.domElement.addEventListener('pointermove', e => {
     const hp = new THREE.Vector3();
     if (ray.ray.intersectPlane(dragPlane, hp)) { drag.ab.position.copy(hp.add(drag.off)); drag.ab.position.z = 0.6; }
     const n = nearestAntigen(drag.ab, p.x, p.y, 58);
-    if (n && FIT[drag.ab.userData.x] === n.ag.t) {                     // 모양이 맞는 응집원 근처: 저절로 끌려가 결합
-      const ab = drag.ab; drag = null; highlight(null);
-      try { renderer.domElement.releasePointerCapture(e.pointerId); } catch (err) {}
-      bindHit(ab, n);
-      return;
-    }
     highlight(n ? n.ag : null);
   } else {
     const dx = p.x - drag.x, dy = p.y - drag.y; drag.x = p.x; drag.y = p.y;
