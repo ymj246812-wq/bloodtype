@@ -119,6 +119,19 @@ button:focus-visible{outline:3px solid var(--tO);outline-offset:2px}
 #view.shake{animation:vshake .5s}
 @keyframes vshake{0%,100%{transform:none}12%{transform:translateX(-14px) rotate(-.6deg)}26%{transform:translateX(12px) rotate(.5deg)}40%{transform:translateX(-10px)}55%{transform:translateX(8px)}70%{transform:translateX(-5px)}85%{transform:translateX(3px)}}
 
+/* 맞춰 보기 시작 안내 */
+#cue{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center;
+  background:var(--ink);color:#fff;border-radius:10px;padding:16px 24px 14px;box-shadow:0 8px 0 rgba(0,0,0,.25);width:max-content;max-width:calc(100% - 32px)}
+#cue b{display:block;font-family:var(--disp);font-weight:400;font-size:clamp(1.5rem,4.6vw,2.3rem);line-height:1.15}
+#cue small{display:block;margin-top:6px;font-size:.95rem;opacity:.85}
+#cue svg{width:64px;height:30px;display:block;margin:0 auto 6px}
+#cue svg .hand{animation:dragx 1.3s ease-in-out infinite}
+@keyframes dragx{0%{transform:translateX(26px)}60%,100%{transform:translateX(-14px)}}
+#view.tall #cue svg{transform:rotate(90deg);margin:14px auto 18px}
+#cue.show{animation:cuein .35s cubic-bezier(.2,1.4,.4,1) both}
+#cue.out{transition:opacity .4s;opacity:0}
+@keyframes cuein{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}}
+@media (prefers-reduced-motion:reduce){#cue svg .hand,#cue.show{animation:none}}
 /* 결과 도장: 응집 / 응집 없음 */
 .stamp{position:absolute;z-index:4;left:18px;top:16px;transform-origin:20% 50%;pointer-events:none;font-family:var(--disp);font-size:clamp(2.6rem,9vw,5rem);line-height:1;
   padding:.12em .36em .16em;border:.09em solid currentColor;border-radius:.16em;background:rgba(255,255,255,.82);
@@ -190,6 +203,7 @@ button:focus-visible{outline:3px solid var(--tO);outline-offset:2px}
   <button id="plasmaBtn" class="submit ready hide"><svg viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>혈장 완성</button>
   <div id="ctag" class="ctag hide">고른 적혈구</div>
   <div id="stamp" class="stamp hide" aria-live="assertive"></div>
+  <div id="cue" class="hide" role="status"><svg viewBox="0 0 64 30" aria-hidden="true"><path d="M4 15h40" stroke="#fff" stroke-width="2.5" stroke-dasharray="4 4"/><path d="M10 8L3 15l7 7" stroke="#fff" stroke-width="2.5" fill="none"/><g class="hand"><circle cx="44" cy="15" r="9" fill="#F3C21A"/><circle cx="44" cy="15" r="3.5" fill="#1D252C"/></g></svg><b>드래그해서 응집 여부를 확인하세요!</b><small>혈장의 응집소를 끌어다 적혈구의 응집원에 대 보세요</small></div>
   <div id="flash"></div>
   <div id="boom" aria-live="assertive"></div>
   <div id="act" class="hide"></div>
@@ -509,7 +523,7 @@ function setup() {
   $('zlP').textContent = `받는 사람 ${sel.r}형의 혈장`;
   drawTiles();
   $('zlD').style.opacity = $('zlP').style.opacity = 1;
-  $('stamp').className = 'stamp hide'; $('act').classList.add('hide');
+  $('stamp').className = 'stamp hide'; $('act').classList.add('hide'); clearTimeout(cueTimer); $('cue').className = 'hide';
   $('zoneD').style.opacity = $('zoneP').style.opacity = 1;
   tagsEl.innerHTML = ''; act(''); ['plasmaBtn', 'rbcBtn', 'ctag'].forEach(id => $(id).classList.add('hide'));
   doLayout();
@@ -620,6 +634,13 @@ function checkPlasma() {
 }
 
 /* ③ 맞춰 보기 */
+let cueTimer = null;
+function showCue(on) {
+  const c = $('cue'); clearTimeout(cueTimer);
+  if (!on) { if (!c.classList.contains('hide')) { c.classList.add('out'); cueTimer = setTimeout(() => c.className = 'hide', 400); } return; }
+  c.className = ''; void c.offsetWidth; c.classList.add('show');
+  cueTimer = setTimeout(() => showCue(false), 3500);          // 3.5초 뒤 저절로 사라짐
+}
 function stepTry() {
   setStep(3);
   drawTags();
@@ -631,7 +652,8 @@ function stepTry() {
     res(`혈장을 맞게 만들었어요. 그런데 ${sel.d}형 적혈구에는 응집원이 없어서 응집소가 붙을 곳이 없어요.`, 'ok');
     return finish(false);
   }
-  res(`혈장 완성. 이제 혈장의 응집소를 끌어다 적혈구의 응집원에 맞춰 보세요. 홈 모양이 맞아야 끼워져요.`, 'ok');
+  res(`혈장 완성! 이제 응집소를 드래그해서 응집원에 대 보고 응집 여부를 확인하세요. 홈 모양이 맞아야 끼워져요.`, 'ok');
+  showCue(true);
   hint('응집소를 끌면 맞춰 보고, 빈 곳을 끌면 적혈구가 돌아가요');
 }
 
@@ -799,6 +821,7 @@ renderer.domElement.addEventListener('pointerdown', e => {
   if (L.step === 3 && ab && ab.userData.state === 'tray') {
     const hp = new THREE.Vector3(); ray.ray.intersectPlane(dragPlane, hp);
     drag = { type: 'ab', ab, off: ab.position.clone().sub(hp) };
+    showCue(false);
     ab.userData.state = 'drag';
   } else if (rbc) drag = { type: 'rot', x: p.x, y: p.y };
 });
