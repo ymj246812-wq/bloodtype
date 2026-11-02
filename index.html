@@ -126,7 +126,10 @@ table.pg .tt{font-size:.78rem;min-width:2em;padding:1px 3px}
 .pc.mine{border:2.5px solid var(--ink);background:#fff;color:var(--ink);font-weight:700}
 .pc span{max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pdone{margin-top:10px;padding:10px;border-radius:5px;background:var(--ok);color:#fff;font-weight:600;font-size:.9rem}
-.pdone button{margin-top:6px;border:0;background:#fff;color:var(--ok);font-weight:700;border-radius:4px;padding:5px 10px}
+.pdone button{border:0;background:#fff;color:var(--ok);font-weight:700;border-radius:4px;padding:5px 10px}
+.pdbtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pdone .pdsub{background:var(--blood);color:#fff;font-family:var(--disp);font-weight:400;font-size:1.05rem;padding:9px 14px 8px;border-radius:6px;box-shadow:0 4px 0 var(--bloodDeep)}
+.pdone .pdsub:active{transform:translateY(3px);box-shadow:0 1px 0 var(--bloodDeep)}
 .dleg{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:.8rem;color:var(--mute);margin:2px 0 6px}
 .dleg span{display:inline-flex;align-items:center;gap:5px}.dleg svg{width:34px;height:10px}
 .diagram .new{stroke-dasharray:420;stroke-dashoffset:420;animation:drawin 1.1s ease-out forwards}
@@ -317,6 +320,8 @@ table.grid4 th.corner{text-align:left;line-height:1.25}
       <aside class="prog" id="prog" aria-label="우리 모둠 진행판">
         <div class="ph"><b>우리 모둠 진행판</b><span id="pcount">0/16</span></div>
         <div class="pbar"><i id="pfill"></i></div>
+        <div id="pdone" class="pdone hide" style="margin:10px 12px 0"><span id="pdoneTx">16개 실험을 모두 끝냈어요! 수혈 관계도가 완성됐어요.</span>
+          <div class="pdbtns"><button id="pSubmit" class="pdsub">모둠 결과 제출하기</button><button id="goChart">관계도 크게 보기</button></div></div>
         <div class="pin">
           <div id="pdia"></div>
           <div>
@@ -324,7 +329,7 @@ table.grid4 th.corner{text-align:left;line-height:1.25}
           </div>
           <p class="pnote"><b style="color:var(--ok)">가능</b> 수혈할 수 있다, <b style="color:var(--bad)">불가</b> 수혈할 수 없다로 기록한 칸이에요. 빈칸(+)을 누르면 그 조합을 내가 맡고, 줄무늬 칸은 모둠원이 하고 있는 실험이에요.</p>
         </div>
-        <div id="pdone" class="pdone hide" style="margin:0 12px 12px">16개 실험을 모두 끝냈어요! 관계도를 확인하고 제출하세요.<br><button id="goChart">관계도 보고 제출하러 가기</button></div>
+
       </aside>
     </div>
   </section>
@@ -576,9 +581,11 @@ byId('cht').addEventListener('click', function (e) {
   var key = b.dataset.r + '_' + b.dataset.d;
   setCell(key, ((teamData().chart[key] || 0) + 1) % 3);
 });
-byId('submitBtn').addEventListener('click', function () {
+function submitTeam() {
   call('submit', { name: me }, function (s) { S = s; draw(); showStatus('모둠 결과를 제출했어요.'); });
-});
+}
+byId('submitBtn').addEventListener('click', submitTeam);
+byId('pSubmit').addEventListener('click', submitTeam);
 document.querySelectorAll('.tabs button').forEach(function (b) {
   b.addEventListener('click', function () {
     document.querySelectorAll('.tabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
@@ -639,6 +646,9 @@ function drawProgress() {
   });
   byId('pgrid').innerHTML = h + '</table>';
   byId('pdone').classList.toggle('hide', n < 16);
+  var sent = !!teamData().done;
+  byId('pSubmit').classList.toggle('hide', sent);
+  byId('pdoneTx').textContent = sent ? '제출 완료! 우리 모둠 수혈 관계도를 선생님께 보냈어요.' : '16개 실험을 모두 끝냈어요! 수혈 관계도가 완성됐어요.';
   if (n === 16 && !allDoneShown && !firstTime) { allDoneShown = true; showStatus('16개 실험 완료! 우리 모둠 수혈 관계도가 완성됐어요.'); }
   if (n === 16) allDoneShown = true;
 }
