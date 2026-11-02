@@ -847,9 +847,21 @@ renderer.domElement.addEventListener('pointermove', e => {
   const p = pointer(e);
   if (drag.type === 'ab') {
     const hp = new THREE.Vector3();
-    if (ray.ray.intersectPlane(dragPlane, hp)) { drag.ab.position.copy(hp.add(drag.off)); drag.ab.position.z = 0.6; }
-    const n = nearestAntigen(drag.ab, p.x, p.y, 58);
-    highlight(n ? n.ag : null);
+    if (ray.ray.intersectPlane(dragPlane, hp)) { drag.finger = hp.add(drag.off); drag.finger.z = 0.6; }
+    if (drag.snap) {
+      // 붙어 있는 동안: 손가락이 응집원에서 멀리 벗어나면 떨어져서 다시 손을 따라옴
+      rbc.updateMatrixWorld(true);
+      const s = project(drag.snap.ag.dock.clone().applyMatrix4(rbc.matrixWorld));
+      if (Math.hypot(p.x - s.x, p.y - s.y) > 120) drag.snap = null;
+    }
+    if (!drag.snap && drag.finger) {
+      drag.ab.position.copy(drag.finger);
+      const n = nearestAntigen(drag.ab, p.x, p.y, 58);
+      if (n && FIT[drag.ab.userData.x] === n.ag.t) {                 // 모양이 맞는 응집원 근처: 착 달라붙음 (놓아야 결합 완료)
+        drag.snap = n;
+        tone([[0, 1100, 800, 0.05, 0.08, 'triangle']]);
+      }
+    }
   } else {
     const dx = p.x - drag.x, dy = p.y - drag.y; drag.x = p.x; drag.y = p.y;
     rbc.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), dx * 0.01));
@@ -859,7 +871,10 @@ renderer.domElement.addEventListener('pointermove', e => {
 function endDrag(e) {
   if (!drag) return;
   const p = pointer(e);
-  if (drag.type === 'ab') onDrop(drag.ab, p.x, p.y);
+  if (drag.type === 'ab') {
+    if (drag.snap) bindHit(drag.ab, drag.snap);                  // 붙어 있던 상태에서 놓음: 결합
+    else onDrop(drag.ab, p.x, p.y);                              // 그 밖: 놓은 자리에서 판정(모양이 틀리면 '아닙니다!')
+  }
   drag = null;
 }
 renderer.domElement.addEventListener('pointerup', endDrag);
@@ -897,6 +912,15 @@ function frame(now) {
     if (t >= 1) { anims.splice(i, 1); a.done && a.done(); }
   }
   const time = clock.getElapsedTime();
+  if (drag && drag.type === 'ab' && rbc) {
+    const ab = drag.ab;
+    if (drag.snap) {                                               // 응집원 쪽으로 빨려 들어가 붙은 자세
+      const { p, q } = dockTarget(ab, drag.snap.k, drag.snap.ag);
+      rbc.updateMatrixWorld(true);
+      const wp = p.addScaledVector(drag.snap.ag.u, 0.12).applyMatrix4(rbc.matrixWorld), wq = rbc.quaternion.clone().multiply(q);
+      ab.position.lerp(wp, 0.35); ab.quaternion.slerp(wq, 0.35);
+    } else ab.quaternion.slerp(slotQ, 0.25);                       // 떨어지면 원래 자세로
+  }
   if (L && !reduce) {
     L.tray.forEach((ab, i) => {
       if (ab.userData.state !== 'tray' && ab.userData.state !== 'pick') return;
