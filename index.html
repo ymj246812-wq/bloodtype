@@ -20,6 +20,7 @@ body{margin:0;background:var(--bench);color:var(--ink);font-family:'Apple SD Got
 img{max-width:100%;display:block}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
+button,a,select,input{touch-action:manipulation}
 button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--tO);outline-offset:2px}
 .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
 .hide{display:none!important}
@@ -98,15 +99,23 @@ footer{border-top:1px solid var(--line);padding:14px 0 30px;color:var(--mute);fo
 .appbar .who{font-size:.92rem;text-align:right}
 .appbar .who b{font-family:var(--disp);font-weight:400;font-size:1.1rem;margin-right:6px}
 .appbar .who small{display:block;opacity:.75}
-.tabs{display:flex;gap:2px;border-bottom:1.5px solid var(--ink);margin:16px 0 16px;overflow-x:auto}
+.tabs{display:flex;gap:2px;border-bottom:1.5px solid var(--ink);margin:16px 0 16px;overflow-x:auto;position:sticky;top:0;z-index:20;background:var(--bench);padding-top:6px}
+.tabs .s{display:none}
+@media (max-width:600px){
+  .tabs{margin:10px 0 12px}
+  .tabs button{flex:1 1 0;padding:11px 2px 10px;font-size:.95rem}
+  .tabs .l{display:none}.tabs .s{display:inline}
+}
 .tabs button{border:1.5px solid transparent;border-bottom:0;background:none;padding:9px 16px 8px;border-radius:6px 6px 0 0;font-weight:700;color:var(--mute);white-space:nowrap;margin-bottom:-1.5px}
 .tabs button.on{background:var(--paper);border-color:var(--ink);color:var(--ink)}
 .panel{padding-bottom:40px}
-#lab3d{width:100%;border:0;display:block;height:1100px;background:transparent}
+#lab3d{width:100%;border:0;display:block;height:1100px;background:transparent;scroll-margin-top:60px}
 .labgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
-.prog{position:sticky;top:12px;background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;overflow:hidden}
+.prog{position:sticky;top:62px;background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;overflow:hidden}
 .prog .ph{display:flex;justify-content:space-between;align-items:baseline;background:var(--ink);color:#fff;padding:7px 12px}
 .prog .ph b{font-weight:700}
+.prog .tog{display:none;border:1px solid #ffffff66;background:none;color:#fff;border-radius:4px;padding:3px 8px;font-size:.8rem;margin-left:8px}
+@media (max-width:980px){.prog .tog{display:inline-block}.prog.fold #pdia,.prog.fold .pnote{display:none}.prog.fold .pin{grid-template-columns:1fr}}
 .prog .ph span{font-family:var(--disp);font-size:1.35rem;line-height:1}
 .pbar{height:6px;background:#DDE3E1}.pbar i{display:block;height:100%;width:0;background:var(--ok);transition:width .6s}
 .pin{padding:10px 12px 12px}
@@ -194,6 +203,30 @@ table.grid4 th.corner{text-align:left;line-height:1.25}
 .legend2{font-size:.85rem;color:var(--mute);margin:0 0 10px}
 .legend2 i{display:inline-block;width:14px;height:14px;outline:3px solid #E07B00;outline-offset:-1px;vertical-align:-2px;margin-right:4px;background:#fff}
 
+/* 정답 확인 */
+.ans{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.ans{grid-template-columns:1fr}}
+.ansHead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 14px}
+.ansHead h2{font-family:var(--disp);font-weight:400;font-size:clamp(1.6rem,4vw,2.4rem);margin:0}
+.ansHead .row{display:flex;gap:8px;flex-wrap:wrap}
+.btn.red{background:var(--blood);border-color:var(--blood);color:#fff}
+.score{display:flex;align-items:baseline;gap:8px;margin:0 0 6px}
+.score b{font-family:var(--disp);font-weight:400;font-size:clamp(2.4rem,7vw,3.6rem);line-height:1}
+.score span{color:var(--mute)}
+.score.full b{color:var(--ok)}
+.why{margin:10px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.why li{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;font-size:.92rem;background:#F6F8F7;border-radius:5px;padding:8px 10px}
+.why li.bad{background:#FFF1E0;outline:2px solid #E07B00;outline-offset:-2px}
+.why .pair{font-weight:700;white-space:nowrap}
+.why .res{display:inline-block;font-weight:700;margin-right:4px}
+.why .res.o{color:var(--ok)}.why .res.x{color:var(--bad)}
+.why small{display:block;color:var(--mute);margin-top:2px}
+details.whyall summary{cursor:pointer;font-weight:700;margin-top:12px;padding:6px 0}
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:16px}
+.board .team .sc{font-family:var(--disp);font-size:1.6rem}
+.rank{display:inline-grid;place-items:center;width:1.8em;height:1.8em;border-radius:50%;background:var(--ink);color:#fff;font-weight:700;font-size:.85rem;margin-right:6px}
+.revealNote{font-size:.85rem;color:var(--mute)}
+#ansView .sheet{padding:16px 18px}
 #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;max-width:min(92vw,560px);padding:10px 16px;border-radius:6px;background:var(--ink);color:#fff;font-size:.92rem;box-shadow:0 6px 0 rgba(0,0,0,.2)}
 #toast.err{background:var(--bad)}
 </style>
@@ -309,16 +342,17 @@ table.grid4 th.corner{text-align:left;line-height:1.25}
 <!-- 학생 화면 -->
 <div id="main" class="wrap hide">
   <nav class="tabs" role="tablist">
-    <button data-tab="lab" class="on">실험하기</button>
-    <button data-tab="chart">우리 모둠 관계도</button>
-    <button data-tab="share">모둠별 결과</button>
+    <button data-tab="lab" class="on"><span class="l">실험하기</span><span class="s">실험</span></button>
+    <button data-tab="chart"><span class="l">우리 모둠 관계도</span><span class="s">관계도</span></button>
+    <button data-tab="share"><span class="l">모둠별 결과</span><span class="s">모둠별</span></button>
+    <button data-tab="answer" id="ansTabBtn" class="hide"><span class="l">정답 확인</span><span class="s">정답</span></button>
   </nav>
 
   <section id="t-lab" class="panel">
     <div class="labgrid">
       <iframe id="lab3d" title="3D 수혈 실험대" src="about:blank"></iframe>
       <aside class="prog" id="prog" aria-label="우리 모둠 진행판">
-        <div class="ph"><b>우리 모둠 진행판</b><span id="pcount">0/16</span></div>
+        <div class="ph"><b>우리 모둠 진행판<button class="tog" id="progTog" type="button" aria-expanded="false">관계도 보기</button></b><span id="pcount">0/16</span></div>
         <div class="pbar"><i id="pfill"></i></div>
         <div id="pdone" class="pdone hide" style="margin:10px 12px 0"><span id="pdoneTx">16개 실험을 모두 끝냈어요! 수혈 관계도가 완성됐어요.</span>
           <div class="pdbtns"><button id="pSubmit" class="pdsub">모둠 결과 제출하기</button><button id="goChart">관계도 크게 보기</button></div></div>
@@ -352,6 +386,7 @@ table.grid4 th.corner{text-align:left;line-height:1.25}
   </section>
 
   <section id="t-share" class="panel hide"><div id="shr" class="teams"></div></section>
+  <section id="t-answer" class="panel hide"><div id="myAns"></div></section>
 </div>
 
 <!-- 교사 화면 -->
@@ -361,6 +396,7 @@ table.grid4 th.corner{text-align:left;line-height:1.25}
       <button class="btn dark" id="autoBtn">4명씩 자동 배정</button>
       <button class="btn" id="resetBtn">전체 초기화</button>
       <a class="btn" href="3d.html" target="_blank" style="text-decoration:none;color:var(--ink)">3D 실험대 따로 열기</a>
+      <button class="btn red" id="ansOpen">정답 확인</button>
     </div>
     <div class="sheet" style="margin-bottom:16px">
       <h3>학생 명단</h3>
@@ -370,6 +406,21 @@ table.grid4 th.corner{text-align:left;line-height:1.25}
     <h3 style="margin:0 0 4px">모둠별 결과</h3>
     <p class="legend2"><i></i>주황 테두리 칸과 주황색 굵은 화살표는 정답과 다르게 기록한 것이에요.</p>
     <div id="tshr" class="teams"></div>
+  </div>
+</div>
+
+<!-- 정답 확인 (교사) -->
+<div id="ansView" class="wrap hide">
+  <div class="panel" style="padding-top:14px">
+    <div class="ansHead">
+      <h2>정답 확인</h2>
+      <div class="row">
+        <button class="btn red" id="revealBtn">학생에게 정답 공개</button>
+        <button class="btn" id="ansClose">교사 화면으로</button>
+      </div>
+    </div>
+    <p class="revealNote" id="revealNote"></p>
+    <div id="ansBody"></div>
   </div>
 </div>
 
@@ -534,6 +585,11 @@ function draw() {
   byId('sub').innerHTML = teamData().done ? '<span class="chip d">제출했어요</span>' : '<span class="chip">아직 제출 전</span>';
   byId('sum').innerHTML = summary(c);
   byId('shr').innerHTML = shareCards(false);
+  var rv = S.reveal === true, tb = byId('ansTabBtn');
+  if (rv && tb.classList.contains('hide')) showStatus('선생님이 정답을 공개했어요. "정답 확인" 탭을 눌러 보세요.');
+  tb.classList.toggle('hide', !rv);
+  if (!rv && !byId('t-answer').classList.contains('hide')) document.querySelector('.tabs button[data-tab="lab"]').click();
+  if (rv) drawMyAnswer();
 }
 
 function tt(t) { return '<span class="tt" style="background:' + TILE[t] + (t === 'O' ? ';color:#fff' : '') + '">' + t + '</span>'; }
@@ -589,7 +645,7 @@ byId('pSubmit').addEventListener('click', submitTeam);
 document.querySelectorAll('.tabs button').forEach(function (b) {
   b.addEventListener('click', function () {
     document.querySelectorAll('.tabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
-    ['lab', 'chart', 'share'].forEach(function (n) { byId('t-' + n).classList.toggle('hide', n !== b.dataset.tab); });
+    ['lab', 'chart', 'share', 'answer'].forEach(function (n) { byId('t-' + n).classList.toggle('hide', n !== b.dataset.tab); });
   });
 });
 
@@ -668,8 +724,15 @@ byId('pgrid').addEventListener('click', function (e) {
   myClaim = { r: r, d: d };
   putKey(ck(r, d), me + '|' + Date.now());
   draw(); sendSet();
-  if (window.innerWidth <= 980) byId('lab3d').scrollIntoView({ behavior: 'smooth' });
+  byId('lab3d').scrollIntoView({ behavior: 'smooth', block: 'start' });          // 고르면 실험대로 이동
 });
+(function () {
+  var pr = byId('prog'), tg = byId('progTog');
+  if (window.innerWidth <= 600) pr.classList.add('fold');              // 휴대폰: 처음엔 표만 보이게
+  function lab() { var f = pr.classList.contains('fold'); tg.textContent = f ? '관계도 보기' : '관계도 접기'; tg.setAttribute('aria-expanded', String(!f)); }
+  tg.addEventListener('click', function () { pr.classList.toggle('fold'); lab(); });
+  lab();
+})();
 byId('goChart').addEventListener('click', function () { document.querySelector('.tabs button[data-tab="chart"]').click(); });
 
 /* 3D 실험대(안쪽 화면)와 주고받기 */
@@ -685,8 +748,86 @@ window.addEventListener('message', function (e) {
   }
 });
 
+/* ---------- 정답 확인 ---------- */
+var ANS = {};
+TY.forEach(function (r) { TY.forEach(function (d) { ANS[r + '_' + d] = fits(r, d) ? 2 : 1; }); });
+var GK = { a: 'α', b: 'β' }, INVG = { A: 'a', B: 'b' };
+function reason(d, r) {
+  var hit = ANTIGEN[d].filter(function (g) { return ANTIBODY[r].indexOf(INVG[g]) >= 0; });
+  if (hit.length) return d + '형 적혈구의 응집원 ' + hit.join('·') + '와 ' + r + '형 혈장의 응집소 ' + hit.map(function (g) { return GK[INVG[g]]; }).join('·') + '가 만나 응집이 일어나요.';
+  if (!ANTIGEN[d].length) return 'O형 적혈구에는 응집원이 없어서 응집소가 붙을 곳이 없어요. 응집이 일어나지 않아요.';
+  if (!ANTIBODY[r].length) return 'AB형 혈장에는 응집소가 없어서 응집이 일어나지 않아요.';
+  return d + '형 적혈구의 응집원 ' + ANTIGEN[d].join('·') + '에 맞는 응집소가 ' + r + '형 혈장(응집소 ' + ANTIBODY[r].map(function (x) { return GK[x]; }).join('·') + ')에는 없어서 응집이 일어나지 않아요.';
+}
+function grade(c) {
+  var ok = 0, filled = 0, items = [];
+  TY.forEach(function (d) { TY.forEach(function (r) {
+    var k = r + '_' + d, v = c[k];
+    if (v == 1 || v == 2) filled++;
+    var right = v == ANS[k]; if (right) ok++;
+    items.push({ d: d, r: r, v: v, right: right });
+  }); });
+  return { ok: ok, filled: filled, items: items };
+}
+function blankLine(items) {
+  var b = items.filter(function (it) { return it.v != 1 && it.v != 2; });
+  return b.length ? '<p class="note" style="margin:8px 0 0">아직 기록하지 않은 조합 ' + b.length + '개: ' + b.map(function (it) { return it.d + '→' + it.r; }).join(', ') + '</p>' : '';
+}
+function whyItem(it, mine) {
+  var a = ANS[it.r + '_' + it.d], mark = a == 1 ? '<span class="res o">수혈할 수 있다</span>' : '<span class="res x">수혈할 수 없다</span>';
+  var you = mine && !it.right ? '<small>우리 모둠 기록: ' + (it.v == 1 ? '수혈할 수 있다' : it.v == 2 ? '수혈할 수 없다' : '기록 없음') + '</small>' : '';
+  return '<li class="' + (mine && !it.right ? 'bad' : '') + '"><span class="pair">' + it.d + '형 → ' + it.r + '형</span><span>' + mark + reason(it.d, it.r) + you + '</span></li>';
+}
+function answerSheet() {
+  var all = grade(ANS).items;
+  return '<div class="sheet"><h3>정답 수혈 관계도</h3><p class="note">실선은 수혈할 수 있는 조합(9개), 빨간 점선 ✕는 수혈할 수 없는 조합(7개)이에요.</p>' +
+    diagram(ANS, false) + DLEGEND +
+    '<div class="sum">' + summary(ANS) + '</div>' +
+    '<details class="whyall"><summary>16개 조합별 이유 보기</summary><ul class="why">' + all.map(function (it) { return whyItem(it, false); }).join('') + '</ul></details></div>';
+}
+function teamSheet(k, title) {
+  var t = S.teams[k] || { chart: {} }, g = grade(t.chart), wrong = g.items.filter(function (it) { return !it.right && (it.v == 1 || it.v == 2); });
+  return '<div class="sheet"><h3>' + title + '</h3>' +
+    '<div class="score' + (g.ok === 16 ? ' full' : '') + '"><b>' + g.ok + '/16</b><span>맞음' + (g.filled < 16 ? ' (기록 ' + g.filled + '개)' : '') + '</span></div>' +
+    diagram(t.chart, true) + DLEGEND +
+    (wrong.length ? '<p class="note" style="margin-top:8px">주황색은 정답과 다르게 기록한 조합이에요. 이유를 읽어 보세요.</p><ul class="why">' + wrong.map(function (it) { return whyItem(it, true); }).join('') + '</ul>'
+                  : g.ok === 16 ? '<p class="note" style="margin-top:8px;color:var(--ok);font-weight:700">16개 모두 맞혔어요!</p>' : '<p class="note" style="margin-top:8px">기록한 조합은 모두 맞았어요.</p>') + blankLine(g.items) + '</div>';
+}
+function drawMyAnswer() {
+  var t = myTeam(); if (!t) return;
+  byId('myAns').innerHTML = '<div class="ans">' + teamSheet(t, '우리 모둠 (' + esc(t) + '모둠) 채점 결과') + answerSheet() + '</div>';
+}
+function drawAnswerView() {
+  var ks = Object.keys(S.teams).sort(function (a, b) { return a - b; });
+  var ranked = ks.map(function (k) { return { k: k, g: grade(S.teams[k].chart) }; }).sort(function (a, b) { return b.g.ok - a.g.ok; });
+  var board = ranked.length ? '<h3 style="margin:22px 0 0">모둠별 채점</h3><div class="board">' + ranked.map(function (x, i) {
+    var t = S.teams[x.k], wrong = x.g.items.filter(function (it) { return !it.right && (it.v == 1 || it.v == 2); });
+    return '<article class="team"><div class="hd"><b><span class="rank">' + (i + 1) + '</span>' + esc(x.k) + '모둠</b><span class="sc">' + x.g.ok + '/16</span></div>' +
+      '<div class="mem">' + esc(members(x.k).join(', ')) + (t.done ? ' <span class="chip d">제출</span>' : ' <span class="chip">미제출</span>') + '</div>' +
+      '<div class="bd">' + diagram(t.chart, true) + (wrong.length ? '<ul class="why" style="width:100%">' + wrong.map(function (it) { return whyItem(it, true); }).join('') + '</ul>' : x.g.ok === 16 ? '<p class="note" style="color:var(--ok);font-weight:700">모두 맞혔어요!</p>' : '') + '<div style="width:100%">' + blankLine(x.g.items) + '</div></div></article>';
+  }).join('') + '</div>' : '<div class="empty" style="margin-top:16px">아직 기록한 모둠이 없어요.</div>';
+  byId('ansBody').innerHTML = '<div class="ans">' + answerSheet() + '<div class="sheet"><h3>한눈에 보기</h3><p class="note">받는 사람(세로) × 주는 사람(가로) 정답표예요.</p>' + table(ANS, false, false) +
+    '<p class="note" style="margin-top:12px">O형은 모든 혈액형에게 줄 수 있고, AB형은 모든 혈액형에게서 받을 수 있어요. 같은 혈액형끼리는 수혈할 수 있어요.</p></div></div>' + board;
+  var rv = S.reveal;
+  byId('revealBtn').textContent = rv ? '학생 화면에서 정답 숨기기' : '학생에게 정답 공개';
+  byId('revealNote').textContent = rv === true ? '지금 학생 화면에 "정답 확인" 탭이 열려 있어요.' : '정답은 아직 학생에게 보이지 않아요. 공개하면 학생 화면에 "정답 확인" 탭이 생겨요.';
+}
+var ansOpen = false;
+byId('ansOpen').addEventListener('click', function () { ansOpen = true; byId('teacher').classList.add('hide'); byId('ansView').classList.remove('hide'); drawAnswerView(); window.scrollTo(0, 0); });
+byId('ansClose').addEventListener('click', function () { ansOpen = false; byId('ansView').classList.add('hide'); byId('teacher').classList.remove('hide'); drawTeacher(); });
+byId('revealBtn').addEventListener('click', function () {
+  var on = !S.reveal;
+  call('reveal', { pw: pw, on: on }, function (s) {
+    S = s;
+    if (on && s.reveal !== true) showStatus('학생 화면에 공개하려면 앱스크립트 코드를 새 버전으로 바꿔야 해요.', 'err');
+    else showStatus(on ? '학생 화면에 정답을 공개했어요.' : '학생 화면에서 정답을 숨겼어요.');
+    drawAnswerView();
+  });
+});
+
 /* ---------- 교사 화면 ---------- */
 function drawTeacher() {
+  if (ansOpen) drawAnswerView();
   byId('who').innerHTML = '<b>교사</b><small>학생 ' + Object.keys(S.students).length + '명 입장</small>';
   var ns = Object.keys(S.students);
   byId('stu').innerHTML = ns.length ? ns.map(function (n) {

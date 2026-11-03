@@ -73,6 +73,8 @@ function api(op, argJson) {
       if (t2) t2.done = true;
     } else if (op === 'teacher') {
       checkTeacher(); save = false;
+    } else if (op === 'reveal') {
+      checkTeacher(); s.reveal = !!a.on;          // 학생 화면에 정답 공개 / 숨기기
     } else if (op === 'reset') {
       checkTeacher(); s = { students: {}, teams: {} };
     } else {

@@ -29,6 +29,7 @@ body.embed .bag .chg{display:none}
 #pickFirst{position:absolute;z-index:4;inset:0;display:grid;place-items:center;text-align:center;padding:20px;background:rgba(245,247,246,.82);font-weight:700;font-size:1.1rem}
 #pickFirst b{display:block;font-family:var(--disp);font-weight:400;font-size:1.7rem;margin-bottom:6px}
 button{font:inherit;color:inherit;cursor:pointer}
+button{touch-action:manipulation}
 button:focus-visible{outline:3px solid var(--tO);outline-offset:2px}
 
 /* 수혈 카드: 주는 사람 → 받는 사람 */
@@ -75,7 +76,7 @@ button:focus-visible{outline:3px solid var(--tO);outline-offset:2px}
 
 /* 실험대 */
 #view{position:relative;width:100%;height:clamp(460px,66vw,620px);border-radius:6px;overflow:hidden;background:#F5F7F6;border:1.5px solid var(--ink);touch-action:none}
-@media (max-width:700px){#view{height:min(178vw,820px)}}
+@media (max-width:700px){#view{height:min(158vw,720px)}}
 #view canvas{position:relative;z-index:1;display:block;width:100%;height:100%}
 .zone{position:absolute;z-index:0;transition:opacity .6s}
 .zone .zl{position:absolute;top:10px;left:12px;font-weight:700;font-size:.92rem;padding:3px 10px;border-radius:3px;color:#fff}
