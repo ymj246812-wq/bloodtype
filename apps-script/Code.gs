@@ -39,6 +39,41 @@ function api(op, argJson) {
   // 읽기(state)는 잠금 없이 빠르게 처리합니다.
   if (op === 'state') return JSON.stringify(load());
 
+  // ----- 수업 기록 보관함 (수업마다 따로 저장) -----
+  if (op === 'archives' || op === 'archiveGet' || op === 'archiveDel' || op === 'archive') {
+    if (String(a.pw) !== String(TEACHER_PW)) throw new Error('비밀번호가 달라요');
+    var idx = JSON.parse(props.getProperty('AIDX') || '[]');
+    if (op === 'archives') return JSON.stringify({ list: idx });
+    if (op === 'archiveGet') return props.getProperty('A_' + a.id) || JSON.stringify({ missing: true });
+    if (op === 'archiveDel') {
+      props.deleteProperty('A_' + a.id);
+      idx = idx.filter(function (x) { return String(x.id) !== String(a.id); });
+      props.setProperty('AIDX', JSON.stringify(idx));
+      return JSON.stringify({ list: idx });
+    }
+    // archive: 지금 수업을 이름 붙여 저장 (진행 중인 찜은 빼고 결과만)
+    var cur = load(), teams = {};
+    Object.keys(cur.teams).forEach(function (k) {
+      var c = cur.teams[k].chart || {}, out = {};
+      Object.keys(c).forEach(function (key) {
+        if (/^c_/.test(key)) { if (String(c[key]).charAt(0) === '=') out[key] = c[key]; }
+        else if (c[key] == 1 || c[key] == 2) out[key] = c[key];
+      });
+      teams[k] = { chart: out, done: !!cur.teams[k].done };
+    });
+    var id = String(new Date().getTime());
+    var snap = { id: id, label: String(a.label || '수업 기록').slice(0, 40), at: new Date().toISOString(), students: cur.students, teams: teams };
+    var bytes = function (t) { return Utilities.newBlob(t).getBytes().length; };   // 저장 칸 하나는 9KB까지
+    var txt = JSON.stringify(snap);
+    if (bytes(txt) > 8800) throw new Error('기록이 너무 커서 저장하지 못했어요. 학생 수를 확인해 주세요.');
+    idx.unshift({ id: id, label: snap.label, at: snap.at.slice(0, 16), teams: Object.keys(teams).length, students: Object.keys(cur.students).length });
+    var idxTxt = JSON.stringify(idx);
+    if (bytes(idxTxt) > 8800) throw new Error('보관함이 가득 찼어요. 오래된 기록을 몇 개 지운 뒤 다시 저장해 주세요.');
+    props.setProperty('A_' + id, txt);
+    props.setProperty('AIDX', idxTxt);
+    return JSON.stringify({ list: idx, saved: id });
+  }
+
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(20000)) throw new Error('사용자가 많아요. 잠시 후 다시 눌러 주세요.');
   try {
