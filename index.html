@@ -111,7 +111,7 @@ footer{border-top:1px solid var(--line);padding:14px 0 30px;color:var(--mute);fo
 .panel{padding-bottom:40px}
 #lab3d{width:100%;border:0;display:block;height:1100px;background:transparent;scroll-margin-top:60px}
 .labgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
-.prog{position:sticky;top:62px;background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;overflow:hidden}
+.prog{scroll-margin-top:64px;position:sticky;top:62px;background:var(--paper);border:1.5px solid var(--ink);border-radius:6px;overflow:hidden}
 .prog .ph{display:flex;justify-content:space-between;align-items:baseline;background:var(--ink);color:#fff;padding:7px 12px}
 .prog .ph b{font-weight:700}
 .prog .tog{display:none;border:1px solid #ffffff66;background:none;color:#fff;border-radius:4px;padding:3px 8px;font-size:.8rem;margin-left:8px}
@@ -241,6 +241,17 @@ details.whyall summary{cursor:pointer;font-weight:700;margin-top:12px;padding:6p
 .astats div b{display:block;font-family:var(--disp);font-weight:400;font-size:1.9rem;line-height:1.1}
 .astats div span{font-size:.85rem;color:var(--mute)}
 .warnbox{background:#FFF1E0;border:1.5px solid #E07B00;border-radius:6px;padding:12px 14px;font-size:.92rem}
+/* 기록 확인 */
+.rec{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;width:min(88vw,380px);text-align:center;padding:22px 18px 18px;border-radius:12px;background:var(--ok);color:#fff;box-shadow:0 10px 0 rgba(0,0,0,.2);animation:recIn .35s cubic-bezier(.2,1.4,.4,1)}
+.rec b{display:block;font-family:var(--disp);font-weight:400;font-size:2rem;line-height:1.15}
+.rec span{display:block;margin-top:6px;font-weight:700;font-size:1.05rem}
+.rec small{display:block;margin-top:6px;opacity:.9}
+.rec.wait{background:var(--ink)}
+.rec.fail{background:var(--bad)}
+@keyframes recIn{from{opacity:0;transform:translate(-50%,-50%) scale(.7)}}
+.pc.just{animation:just .5s ease-in-out 5;box-shadow:0 0 0 4px var(--ink)}
+@keyframes just{50%{transform:scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.rec,.pc.just{animation:none}}
 #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:50;max-width:min(92vw,560px);padding:10px 16px;border-radius:6px;background:var(--ink);color:#fff;font-size:.92rem;box-shadow:0 6px 0 rgba(0,0,0,.2)}
 #toast.err{background:var(--bad)}
 </style>
@@ -463,6 +474,7 @@ details.whyall summary{cursor:pointer;font-weight:700;margin-top:12px;padding:6p
   </div>
 </div>
 
+<div id="recDone" class="rec hide" role="status" aria-live="assertive"></div>
 <div id="toast" class="hide" role="status"></div>
 
 <script>
@@ -489,7 +501,7 @@ window.onerror = function (msg) { showStatus('화면 오류: ' + msg, 'err'); };
 var API_URL = 'https://script.google.com/macros/s/AKfycbx7p8qVGtgkuUAhbCi7GuG5q5-S37uFSMo6wrI2xLh_NUB20q5ISt-zNbfX5qmlnqITJw/exec';
 
 var busy = false;
-function call(op, arg, onOk, quiet) {
+function call(op, arg, onOk, quiet, onFail) {
   if (!API_URL) { showStatus('저장 서버 주소가 아직 설정되지 않았어요.', 'err'); return; }
   fetch(API_URL, { method: 'POST', body: JSON.stringify({ op: op, arg: arg || {} }) })
     .then(function (r) { return r.json(); })
@@ -499,6 +511,7 @@ function call(op, arg, onOk, quiet) {
     })
     .catch(function (e) {
       if (op === 'ping') { byId('conn').className = 'off'; byId('conn').textContent = '저장 서버에 연결되지 않았어요'; }
+      if (onFail) onFail(e);
       if (quiet) return;
       showStatus('오류: ' + ((e && e.message) || e) + ' (인터넷 연결을 확인하세요)', 'err');
     });
@@ -664,11 +677,11 @@ function shareCards(check) {
       '<div class="bd">' + diagram(t.chart, check) + DLEGEND + table(t.chart, false, check) + '</div></article>';
   }).join('');
 }
-function setCell(key, v) {
+function setCell(key, v, done) {
   var t = myTeam(); if (!t) return false;
   if (!S.teams[t]) S.teams[t] = { chart: {}, done: false };
   S.teams[t].chart[key] = v; draw();
-  call('cell', { name: me, key: key, val: v }, function (s) { S = s; draw(); });
+  call('cell', { name: me, key: key, val: v }, function (s) { S = s; draw(); if (done) done(true); }, !!done, function () { if (done) done(false); });
   return true;
 }
 byId('cht').addEventListener('click', function (e) {
@@ -735,7 +748,8 @@ function drawProgress() {
       if (ci.st === 'mine' && !myClaim) { myClaim = { r: r, d: d }; setTimeout(sendSet, 0); }   // 새로고침해도 하던 실험 이어서
       var lab = { o: '<b>가능</b>', x: '<b>불가</b>', mine: '<b>▶</b>', doing: '<b>…</b>', free: '<b>+</b>' }[ci.st];
       var sub = ci.st === 'mine' ? '내 실험' : ci.who ? esc(ci.who) : '';
-      h += '<td><button class="pc ' + ci.st + '" data-r="' + r + '" data-d="' + d + '" title="주는 ' + d + '형 → 받는 ' + r + '형">' + lab + (sub ? '<span>' + sub + '</span>' : '') + '</button></td>';
+      var just = justKey === r + '_' + d && Date.now() - justAt < 5000 ? ' just' : '';
+      h += '<td><button class="pc ' + ci.st + just + '" data-r="' + r + '" data-d="' + d + '" title="주는 ' + d + '형 → 받는 ' + r + '형">' + lab + (sub ? '<span>' + sub + '</span>' : '') + '</button></td>';
     });
     h += '</tr>';
   });
@@ -774,6 +788,24 @@ byId('pgrid').addEventListener('click', function (e) {
 })();
 byId('goChart').addEventListener('click', function () { document.querySelector('.tabs button[data-tab="chart"]').click(); });
 
+/* 기록 확인 표시: 크게 보여 주고, 진행판으로 이동해 방금 칸을 깜빡임 */
+var justKey = '', justAt = 0, recTimer = null;
+function recBanner(state, m) {
+  var el = byId('recDone'), txt = m.d + '형 → ' + m.r + '형: ' + (m.v === 1 ? '수혈할 수 있다' : '수혈할 수 없다');
+  el.className = 'rec ' + state;
+  el.innerHTML = state === 'wait' ? '<b>기록하는 중…</b><span>' + txt + '</span>'
+    : state === 'ok' ? '<b>✓ 기록되었습니다</b><span>' + txt + '</span><small>진행판에서 다음 빈칸을 골라 주세요</small>'
+    : '<b>기록하지 못했어요</b><span>' + txt + '</span><small>인터넷 연결을 확인하고 다시 눌러 주세요</small>';
+  clearTimeout(recTimer);
+  if (state === 'wait') return;
+  recTimer = setTimeout(function () { el.className = 'rec hide'; }, state === 'ok' ? 2400 : 4500);
+  if (state === 'ok') setTimeout(function () {
+    var pr = byId('prog');
+    if (window.innerWidth <= 980 || pr.getBoundingClientRect().top < 0) pr.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    draw();
+  }, 1100);
+}
+
 /* 3D 실험대(안쪽 화면)와 주고받기 */
 window.addEventListener('message', function (e) {
   var m = e.data || {}, f = byId('lab3d');
@@ -781,9 +813,16 @@ window.addEventListener('message', function (e) {
   if (m.type === 'bt-height') f.style.height = (m.h + 4) + 'px';
   if (m.type === 'bt-ready') sendSet();
   if (m.type === 'bt-record') {
-    var ok = (m.v === 1 || m.v === 2) && setCell(m.key, m.v);
-    if (ok) { putKey(ck(m.r, m.d), '=' + me); myClaim = null; }
-    f.contentWindow.postMessage({ type: 'bt-recorded', ok: ok, d: m.d, r: m.r, v: m.v, msg: ok ? '' : '모둠이 정해진 뒤에 기록할 수 있어요.' }, '*');
+    var reply = function (ok, msg) { f.contentWindow.postMessage({ type: 'bt-recorded', ok: ok, d: m.d, r: m.r, v: m.v, msg: msg || '' }, '*'); };
+    if (!(m.v === 1 || m.v === 2) || !myTeam()) { reply(false, '모둠이 정해진 뒤에 기록할 수 있어요.'); return; }
+    recBanner('wait', m);
+    setCell(m.key, m.v, function (ok) {
+      if (!ok) { recBanner('fail', m); reply(false, '기록하지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.'); return; }
+      putKey(ck(m.r, m.d), '=' + me); myClaim = null;
+      justKey = m.key; justAt = Date.now();
+      reply(true);
+      recBanner('ok', m);
+    });
   }
 });
 
