@@ -126,6 +126,15 @@ table.pg th{font-size:.7rem;color:var(--mute);font-weight:600;padding:0}
 table.pg .tt{font-size:.78rem;min-width:2em;padding:1px 3px}
 .pc{width:52px;height:44px;border:1.5px solid var(--line);border-radius:4px;background:#fff;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;font-size:.68rem;color:var(--mute);overflow:hidden}
 .pc b{font-size:.95rem}
+.pc.free b{font-size:.82rem;color:#7C8A93;font-weight:700;letter-spacing:-.02em}
+.pc.free span{color:#AAB4BA;font-size:.62rem}
+table th.axD{background:var(--blood);color:#fff!important;font-size:.78rem;font-weight:700;padding:3px 6px;border-radius:3px;white-space:nowrap}
+table th.axR{background:#7F5800;color:#fff!important;font-size:.78rem;font-weight:700;padding:6px 3px;border-radius:3px;width:1.5em}
+table th.axR span{writing-mode:vertical-rl;text-orientation:upright;white-space:nowrap;letter-spacing:.05em}
+table.mini th.axD,table.mini th.axR{font-size:.68rem}
+.tt{white-space:nowrap}
+.cb .cmb{display:block;font-size:.68rem;font-weight:600;color:#AAB4BA;margin-top:1px;line-height:1}
+.cb{line-height:1.1}
 .pc.o b,.pc.x b{font-family:var(--disp);font-weight:400}
 .pc.free b{color:#B6C0C6}
 .pc.free:hover{border-color:var(--ink)}
@@ -645,16 +654,20 @@ function draw() {
 }
 
 function tt(t) { return '<span class="tt" style="background:' + TILE[t] + (t === 'O' ? ';color:#fff' : '') + '">' + t + '</span>'; }
-function table(c, edit, check) {
-  var h = '<table class="grid4' + (edit ? '' : ' mini') + '"><tr><th class="corner">받는 ↓<br>주는 →</th>';
+function axisHead() {
+  var h = '<tr><th colspan="2"></th><th colspan="4" class="axD">혈액을 주는 쪽 →</th></tr><tr><th colspan="2"></th>';
   TY.forEach(function (d) { h += '<th>' + tt(d) + '</th>'; });
-  h += '</tr>';
-  TY.forEach(function (r) {
-    h += '<tr><th>' + tt(r) + '</th>';
+  return h + '</tr>';
+}
+function axisRow(r, i) { return '<tr>' + (i === 0 ? '<th rowspan="4" class="axR"><span>혈액을 받는 쪽 ↓</span></th>' : '') + '<th>' + tt(r) + '</th>'; }
+function table(c, edit, check) {
+  var h = '<table class="grid4' + (edit ? '' : ' mini') + '">' + axisHead();
+  TY.forEach(function (r, i) {
+    h += axisRow(r, i);
     TY.forEach(function (d) {
       var v = c[r + '_' + d] || 0, cl = v == 1 ? 'o' : v == 2 ? 'x' : '', tx = v == 1 ? '○' : v == 2 ? '✕' : '?';
       var wrong = check && v && ((v == 1) === fits(r, d)) ? ' wrong' : '';
-      h += '<td>' + (edit ? '<button class="cb ' + cl + '" data-r="' + r + '" data-d="' + d + '" aria-label="주는 ' + d + '형, 받는 ' + r + '형">' + tx + '</button>'
+      h += '<td>' + (edit ? '<button class="cb ' + cl + '" data-r="' + r + '" data-d="' + d + '" aria-label="' + d + '형 혈액을 ' + r + '형에게">' + tx + (v ? '' : '<small class="cmb">' + d + '→' + r + '</small>') + '</button>'
                           : '<div class="' + cl + wrong + '">' + tx + '</div>') + '</td>';
     });
     h += '</tr>';
@@ -737,19 +750,17 @@ function drawProgress() {
   byId('pcount').textContent = n + '/16';
   byId('pfill').style.width = (n / 16 * 100) + '%';
   byId('pdia').innerHTML = diagram(c, false, fresh) + DLEGEND;
-  var h = '<table class="pg"><tr><th>받는↓<br>주는→</th>';
-  TY.forEach(function (d) { h += '<th>' + tt(d) + '</th>'; });
-  h += '</tr>';
-  TY.forEach(function (r) {
-    h += '<tr><th>' + tt(r) + '</th>';
+  var h = '<table class="pg">' + axisHead();
+  TY.forEach(function (r, i) {
+    h += axisRow(r, i);
     TY.forEach(function (d) {
       var ci = cellInfo(c, r, d);
       if ((ci.st === 'o' || ci.st === 'x') && !ci.who) ci.who = '표에서 입력';
       if (ci.st === 'mine' && !myClaim) { myClaim = { r: r, d: d }; setTimeout(sendSet, 0); }   // 새로고침해도 하던 실험 이어서
-      var lab = { o: '<b>가능</b>', x: '<b>불가</b>', mine: '<b>▶</b>', doing: '<b>…</b>', free: '<b>+</b>' }[ci.st];
-      var sub = ci.st === 'mine' ? '내 실험' : ci.who ? esc(ci.who) : '';
+      var lab = { o: '<b>가능</b>', x: '<b>불가</b>', mine: '<b>▶</b>', doing: '<b>…</b>', free: '<b>' + d + '→' + r + '</b>' }[ci.st];
+      var sub = ci.st === 'mine' ? '내 실험' : ci.st === 'free' ? '고르기' : ci.who ? esc(ci.who) : '';
       var just = justKey === r + '_' + d && Date.now() - justAt < 5000 ? ' just' : '';
-      h += '<td><button class="pc ' + ci.st + just + '" data-r="' + r + '" data-d="' + d + '" title="주는 ' + d + '형 → 받는 ' + r + '형">' + lab + (sub ? '<span>' + sub + '</span>' : '') + '</button></td>';
+      h += '<td><button class="pc ' + ci.st + just + '" data-r="' + r + '" data-d="' + d + '" title="' + d + '형 혈액을 ' + r + '형에게">' + lab + (sub ? '<span>' + sub + '</span>' : '') + '</button></td>';
     });
     h += '</tr>';
   });
